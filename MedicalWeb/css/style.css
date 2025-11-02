@@ -1,0 +1,11 @@
+body { background-color: #f7f9fb; }
+.navbar { background-color: #004080; }
+.navbar-brand { font-weight: bold; }
+.card-header { background-color: #0078d7; color: #fff; }
+.footer { background-color: #004080; color: white; }
+.table thead { background-color: #0078d7; color: white; }
+.modal-header { background-color: #0078d7; color: white; }
+.btn-primary, .btn-success { color: #fff; }
+.badge { font-size: 0.9rem; }
+.list-group-item-action:hover { background-color: #e9f3ff; }
+.shadow-sm { box-shadow: 0 0.2rem 0.5rem rgba(0,0,0,0.1); }
