@@ -1,0 +1,43 @@
+/* Base colors & layout */
+body { background-color: #f7f9fb; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+.navbar { background-color: #004080; }
+.navbar-brand { font-weight: 700; }
+
+/* Cards and headers */
+.card-header { background-color: #0078d7; color: #fff; }
+.card .card-header.bg-info { background-color: #0d6efd; } /* diagnosis */
+.card .card-header.bg-warning { background-color: #ffc107; color: #212529; }
+.card .card-header.bg-secondary { background-color: #6c757d; }
+
+/* Tables */
+.table thead { background-color: #0078d7; color: white; }
+
+/* Modal header */
+.modal-header { background-color: #0078d7; color: white; }
+
+/* Buttons */
+.btn-primary, .btn-success { color: #fff; }
+
+/* Autocomplete suggestion hover */
+.list-group-item-action:hover { background-color: #e9f3ff; cursor: pointer; }
+
+/* Badges & selected pills */
+.badge { font-size: 0.95rem; }
+
+/* Selected medicines / techniques box */
+#selectedMedicines > div, #selectedTechniques > div {
+  background: #eef6ff;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+/* Toast style override */
+.toast { box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.12); }
+
+/* Visit select */
+#rxVisitSelect, #techVisitSelect { margin-top: 6px; }
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  #searchPatientMain { width: 100% !important; }
+}
