@@ -729,4 +729,62 @@ window.addEventListener("load", async () => {
   await renderPatients();
   renderSelectedMedicines();
   renderSelectedTechs();
+
 });
+
+// =======================
+// TỔNG HỢP DỮ LIỆU 
+// =======================
+
+function renderSummary() {
+  let html = "";
+
+  const diagnosis = $("#diagnosisInput").val();
+  html += `<h5>Chẩn đoán</h5>`;
+  html += diagnosis ? `<p>${diagnosis}</p>` : `<p class="text-muted">Chưa có chẩn đoán</p>`;
+
+  html += `<h5 class="mt-3">Kỹ thuật đã chỉ định</h5>`;
+  if (visitData.services && visitData.services.length > 0) {
+    html += `<ul>`;
+    visitData.services.forEach(s => {
+      html += `<li>${s.name} – ${s.price.toLocaleString()}đ</li>`;
+    });
+    html += `</ul>`;
+  } else {
+    html += `<p class="text-muted">Chưa có kỹ thuật</p>`;
+  }
+
+  html += `<h5 class="mt-3">Thuốc đã kê</h5>`;
+  if (visitData.prescriptions && visitData.prescriptions.length > 0) {
+    html += `<ul>`;
+    visitData.prescriptions.forEach(p => {
+      html += `<li>${p.name} – SL: ${p.qty} – ${p.price.toLocaleString()}đ</li>`;
+    });
+    html += `</ul>`;
+  } else {
+    html += `<p class="text-muted">Chưa kê thuốc</p>`;
+  }
+
+  let totalTech = visitData.services.reduce((a, b) => a + b.price, 0);
+  let totalDrug = visitData.prescriptions.reduce((a, b) => a + (b.qty * b.price), 0);
+  let total = totalTech + totalDrug;
+
+  html += `
+    <h5 class="mt-4">Tổng tiền</h5>
+    <p><b>Kỹ thuật:</b> ${totalTech.toLocaleString()}đ</p>
+    <p><b>Thuốc:</b> ${totalDrug.toLocaleString()}đ</p>
+    <p><b>Tổng cộng:</b> <span class="text-danger fw-bold">${total.toLocaleString()}đ</span></p>
+  `;
+
+  $("#summaryContent").html(html);
+}
+
+$("#summary-tab").on("click", function () {
+  renderSummary();
+});
+
+function refreshSummaryIfOpen() {
+  if ($("#summary").hasClass("active")) {
+    renderSummary();
+  }
+};
