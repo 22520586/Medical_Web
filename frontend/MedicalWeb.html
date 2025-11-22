@@ -30,8 +30,9 @@
         <ul class="nav nav-tabs" id="mainTabs" role="tablist">
           <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabPatients">Bệnh nhân</button></li>
           <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabDiagnosis">Chẩn đoán</button></li>
-          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabPrescription">Đơn thuốc</button></li>
           <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabTechniques">Kỹ thuật</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabPrescription">Đơn thuốc</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabSummary">Tổng hợp</button></li>
         </ul>
 
         <div class="tab-content mt-4">
@@ -113,6 +114,49 @@
               </div>
             </div>
           </div>
+          
+          <!-- TAB TECHNIQUES -->
+          <div class="tab-pane fade" id="tabTechniques">
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-secondary text-white">Chỉ định kỹ thuật</div>
+              <div class="card-body">
+                <form id="techniqueForm" class="row g-3">
+                  <div class="col-md-4 position-relative">
+                    <label class="form-label">Bệnh nhân</label>
+                    <input id="searchPatientTechnique" class="form-control" placeholder="Gõ để tìm bệnh nhân...">
+                    <div id="techPatientSuggestions" class="list-group position-absolute w-100 shadow-sm" style="z-index:1000; display:none; max-height:200px; overflow-y:auto;"></div>
+                    <div id="techSelectedPatient" class="mt-2 small text-muted" style="display:none;">Đã chọn: <strong id="techPatientName"></strong></div>
+                  </div>
+
+                  <div class="col-md-4">
+                    <label class="form-label">Chọn lần khám (visit)</label>
+                    <select id="techVisitSelect" class="form-select">
+                      <option value="">— Chọn hoặc để trống —</option>
+                    </select>
+                    <div class="small text-muted">Nếu chọn visit, chỉ định sẽ gắn vào lần khám đó.</div>
+                  </div>
+
+                  <div class="col-md-4 position-relative">
+                    <label class="form-label">Kỹ thuật</label>
+                    <input id="searchTechnique" class="form-control" placeholder="Gõ tên kỹ thuật...">
+                    <div id="techniqueSuggestions" class="list-group position-absolute w-100 shadow-sm" style="z-index:1000; display:none; max-height:200px; overflow-y:auto;"></div>
+                  </div>
+
+                  <div class="col-12">
+                    <div class="mt-2">
+                      <label class="form-label">Đã chọn:</label>
+                      <div id="selectedTechniques" class="d-flex flex-column gap-2"></div>
+                    </div>
+                  </div>
+
+                  <div class="col-12 d-flex gap-2 justify-content-end">
+                    <button id="previewTechniqueBtn" type="button" class="btn btn-outline-primary">Xem trước phiếu</button>
+                    <button class="btn btn-success" type="submit">Lưu chỉ định</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
 
           <!-- TAB PRESCRIPTION -->
           <div class="tab-pane fade" id="tabPrescription">
@@ -157,50 +201,17 @@
             </div>
           </div>
 
-          <!-- TAB TECHNIQUES -->
-          <div class="tab-pane fade" id="tabTechniques">
-            <div class="card border-0 shadow-sm">
-              <div class="card-header bg-secondary text-white">Chỉ định kỹ thuật</div>
-              <div class="card-body">
-                <form id="techniqueForm" class="row g-3">
-                  <div class="col-md-4 position-relative">
-                    <label class="form-label">Bệnh nhân</label>
-                    <input id="searchPatientTechnique" class="form-control" placeholder="Gõ để tìm bệnh nhân...">
-                    <div id="techPatientSuggestions" class="list-group position-absolute w-100 shadow-sm" style="z-index:1000; display:none; max-height:200px; overflow-y:auto;"></div>
-                    <div id="techSelectedPatient" class="mt-2 small text-muted" style="display:none;">Đã chọn: <strong id="techPatientName"></strong></div>
-                  </div>
-
-                  <div class="col-md-4">
-                    <label class="form-label">Chọn lần khám (visit)</label>
-                    <select id="techVisitSelect" class="form-select">
-                      <option value="">— Chọn hoặc để trống —</option>
-                    </select>
-                    <div class="small text-muted">Nếu chọn visit, chỉ định sẽ gắn vào lần khám đó.</div>
-                  </div>
-
-                  <div class="col-md-4 position-relative">
-                    <label class="form-label">Kỹ thuật</label>
-                    <input id="searchTechnique" class="form-control" placeholder="Gõ tên kỹ thuật...">
-                    <div id="techniqueSuggestions" class="list-group position-absolute w-100 shadow-sm" style="z-index:1000; display:none; max-height:200px; overflow-y:auto;"></div>
-                  </div>
-
-                  <div class="col-12">
-                    <div class="mt-2">
-                      <label class="form-label">Đã chọn:</label>
-                      <div id="selectedTechniques" class="d-flex flex-column gap-2"></div>
-                    </div>
-                  </div>
-
-                  <div class="col-12 d-flex gap-2 justify-content-end">
-                    <button id="previewTechniqueBtn" type="button" class="btn btn-outline-primary">Xem trước phiếu</button>
-                    <button class="btn btn-success" type="submit">Lưu chỉ định</button>
-                  </div>
-                </form>
+        <!-- TAB SUMMARY -->
+        <div class="tab-pane fade" tabSummary>
+          <div class="container mt-3">
+            <h4 class="mb-3">Tổng hợp thông tin khám bệnh</h4>
+              <div id="summaryContent">
+                <p class="text-muted">Chọn chẩn đoán, thêm kỹ thuật hoặc thuốc để hệ thống tự tổng hợp.</p>
               </div>
-            </div>
+              <button id="btnExportInvoice" class="btn btn-primary mt-3">Xuất hóa đơn / In</button>
           </div>
-
-        </div> <!-- /.tab-content -->
+        </div>
+          
       </div>
     </div>
   </main>
@@ -293,4 +304,5 @@
   <!-- Local JS -->
   <script src="js/script.js"></script>
 </body>
+
 </html>
