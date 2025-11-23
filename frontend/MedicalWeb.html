@@ -219,9 +219,12 @@
                     </div>
                   </div>
 
-                  <div class="col-12 d-flex gap-2 justify-content-end">
-                    <button id="previewPrescriptionBtn" type="button" class="btn btn-outline-primary">Xem trước đơn</button>
-                    <button class="btn btn-success" type="submit">Lưu đơn thuốc</button>
+                  <div class="col-12 d-flex gap-2 justify-content-between align-items-center">
+                    <button id="resetRxFormBtn" type="button" class="btn btn-outline-secondary btn-sm">🔄 Bệnh nhân mới</button>
+                    <div class="d-flex gap-2">
+                      <button id="previewPrescriptionBtn" type="button" class="btn btn-outline-primary">Xem trước đơn</button>
+                      <button class="btn btn-success" type="submit">Lưu đơn thuốc</button>
+                    </div>
                   </div>
                 </form>
               </div>
@@ -273,7 +276,10 @@
                   </div>
 
                   <div class="col-12 d-flex gap-2 justify-content-between align-items-center">
-                    <div class="small text-muted">(*) Sau khi lưu sẽ chuyển sang tab đơn thuốc.</div>
+                    <div class="d-flex gap-2">
+                      <button id="resetTechFormBtn" type="button" class="btn btn-outline-secondary btn-sm">🔄 Bệnh nhân mới</button>
+                      <div class="small text-muted align-self-center">(*) Sau khi lưu sẽ chuyển sang tab đơn thuốc.</div>
+                    </div>
                     <div class="d-flex gap-2">
                       <button id="previewTechniqueBtn" type="button" class="btn btn-outline-primary">Xem trước phiếu</button>
                       <button class="btn btn-success" type="submit">Tiếp tục →</button>
