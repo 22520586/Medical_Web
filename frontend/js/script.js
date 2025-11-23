@@ -3,6 +3,47 @@
 // =======================
 const API_BASE = 'http://localhost:3000/api';
 
+// =======================
+// AUTHENTICATION STATE
+// =======================
+let currentUser = null;
+
+function checkAuth() {
+  const stored = localStorage.getItem('currentUser');
+  if (stored) {
+    currentUser = JSON.parse(stored);
+    updateUIForLoggedIn();
+  }
+}
+
+function updateUIForLoggedIn() {
+  document.getElementById('loginBtn').classList.add('d-none');
+  document.getElementById('userInfo').classList.remove('d-none');
+  document.getElementById('userDisplayName').textContent = currentUser.HoTen || currentUser.TenDangNhap;
+}
+
+function updateUIForLoggedOut() {
+  document.getElementById('loginBtn').classList.remove('d-none');
+  document.getElementById('userInfo').classList.add('d-none');
+  currentUser = null;
+  localStorage.removeItem('currentUser');
+}
+
+async function login(username, password) {
+  try {
+    const res = await fetch(`${API_BASE}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Đăng nhập thất bại');
+    return data;
+  } catch (err) {
+    throw err;
+  }
+}
+
 // Lấy danh sách bệnh nhân
 async function getPatients(q = '') {
   try {
@@ -46,6 +87,42 @@ async function getTechniques(q = '') {
 }
 
 // =======================
+// LOGIN HANDLERS
+// =======================
+document.getElementById('loginBtn').addEventListener('click', () => {
+  new bootstrap.Modal(document.getElementById('loginModal')).show();
+});
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errorDiv = document.getElementById('loginError');
+  
+  errorDiv.classList.add('d-none');
+  
+  try {
+    const user = await login(username, password);
+    currentUser = user;
+    localStorage.setItem('currentUser', JSON.stringify(user));
+    updateUIForLoggedIn();
+    bootstrap.Modal.getInstance(document.getElementById('loginModal')).hide();
+    showToast('Đăng nhập thành công!');
+    document.getElementById('loginForm').reset();
+  } catch (err) {
+    errorDiv.textContent = err.message;
+    errorDiv.classList.remove('d-none');
+  }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  if (confirm('Bạn có chắc muốn đăng xuất?')) {
+    updateUIForLoggedOut();
+    showToast('Đã đăng xuất');
+  }
+});
+
+// =======================
 // STATE
 // =======================
 let visits = [];
@@ -57,6 +134,10 @@ let selectedPatientForRx = null;
 let selectedVisitForRx = null;
 let selectedPatientForTech = null;
 let selectedVisitForTech = null;
+
+// Current workflow state
+let currentWorkflowPatient = null;
+let currentWorkflowVisit = null;
 
 // =======================
 // UTIL
@@ -84,42 +165,129 @@ function setupAutocomplete(inputId, suggestionId, dataFetcher, opts = {}) {
   const input = document.getElementById(inputId);
   const box = document.getElementById(suggestionId);
   let timeout;
+  let currentIndex = -1;
+  let currentMatches = [];
 
   const showSuggestions = async (q) => {
     box.innerHTML = "";
-    if (q.length < 2) return (box.style.display = "none");
+    currentIndex = -1;
+    // Giảm từ 2 xuống 1 ký tự để tìm nhanh hơn
+    if (q.length < 1) return (box.style.display = "none");
 
     const data = await dataFetcher(q);
     const matches = data.filter(item => 
       item[opts.key].toLowerCase().includes(q.toLowerCase())
     );
 
-    if (matches.length === 0) return (box.style.display = "none");
+    if (matches.length === 0) {
+      box.innerHTML = '<div class="list-group-item text-muted"><em>Không tìm thấy kết quả</em></div>';
+      box.style.display = "block";
+      currentMatches = [];
+      return;
+    }
 
-    matches.forEach(m => {
+    // Giới hạn hiển thị tối đa 10 kết quả
+    const limitedMatches = matches.slice(0, 10);
+    currentMatches = limitedMatches;
+
+    limitedMatches.forEach((m, index) => {
       const btn = document.createElement("div");
       btn.className = "list-group-item list-group-item-action";
+      btn.setAttribute('data-index', index);
       btn.textContent = opts.format ? opts.format(m) : m[opts.key];
       btn.onclick = () => {
         if (opts.onSelect) opts.onSelect(m);
         input.value = ""; // XÓA INPUT
         box.style.display = "none"; // ẨN GỢI Ý
+        currentIndex = -1;
       };
       box.appendChild(btn);
     });
+    
+    // Hiện số lượng kết quả nếu > 10
+    if (matches.length > 10) {
+      const moreInfo = document.createElement("div");
+      moreInfo.className = "list-group-item text-muted small";
+      moreInfo.textContent = `Và ${matches.length - 10} kết quả khác...`;
+      box.appendChild(moreInfo);
+    }
+    
     box.style.display = "block";
+  };
+
+  const highlightItem = (index) => {
+    const items = box.querySelectorAll('.list-group-item-action');
+    items.forEach(item => item.classList.remove('active'));
+    if (index >= 0 && index < items.length) {
+      items[index].classList.add('active');
+      items[index].scrollIntoView({ block: 'nearest' });
+    }
   };
 
   input.addEventListener("input", () => {
     clearTimeout(timeout);
     const q = input.value.trim();
-    timeout = setTimeout(() => showSuggestions(q), 300);
+    // Giảm delay từ 300ms xuống 200ms cho phản hồi nhanh hơn
+    timeout = setTimeout(() => showSuggestions(q), 200);
+  });
+
+  // Keyboard navigation
+  input.addEventListener("keydown", (e) => {
+    const items = box.querySelectorAll('.list-group-item-action');
+    
+    // Nếu nhấn Enter mà không có gợi ý
+    if (e.key === 'Enter' && (box.style.display === "none" || items.length === 0)) {
+      e.preventDefault();
+      // Tìm nút submit trong form gần nhất
+      const form = input.closest('form');
+      if (form) {
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) {
+          submitBtn.focus();
+        }
+      }
+      return;
+    }
+
+    if (box.style.display === "none" || items.length === 0) return;
+
+    switch(e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        currentIndex = Math.min(currentIndex + 1, items.length - 1);
+        highlightItem(currentIndex);
+        break;
+      
+      case 'ArrowUp':
+        e.preventDefault();
+        currentIndex = Math.max(currentIndex - 1, 0);
+        highlightItem(currentIndex);
+        break;
+      
+      case 'Enter':
+        e.preventDefault();
+        if (currentIndex >= 0 && currentIndex < currentMatches.length) {
+          const selected = currentMatches[currentIndex];
+          if (opts.onSelect) opts.onSelect(selected);
+          input.value = "";
+          box.style.display = "none";
+          currentIndex = -1;
+        }
+        break;
+      
+      case 'Escape':
+        e.preventDefault();
+        box.style.display = "none";
+        currentIndex = -1;
+        break;
+    }
   });
 
   // Ẩn khi click ngoài
   document.addEventListener("click", (e) => {
     if (!input.contains(e.target) && !box.contains(e.target)) {
       box.style.display = "none";
+      currentIndex = -1;
     }
   });
 }
@@ -278,12 +446,63 @@ document.getElementById("patientModal").addEventListener("hidden.bs.modal", () =
 // =======================
 setupAutocomplete("searchPatientDiagnosis", "diagnosisPatientSuggestions", getPatients, {
   key: "name",
-  format: p => `${p.name} - ${p.cccd || p.phone || p.bhyt || 'ID:' + p.id}`,
+  format: p => `${p.name} - ${p.dob ? new Date(p.dob).toLocaleDateString('vi-VN') : ''} - ${p.phone || ''}`,
   onSelect: (p) => {
     selectedPatientForDiagnosis = p;
-    document.getElementById("diagnosisSelectedInfo").style.display = "block";
-    document.getElementById("diagnosisPatientName").textContent = p.name;
+    
+    // Hiển thị thông tin bệnh nhân ở trên
+    document.getElementById('diagnosisPatientNameDisplay').textContent = p.name;
+    const dob = p.dob ? new Date(p.dob).toLocaleDateString('vi-VN') : 'Chưa rõ';
+    const age = p.dob ? calculateAge(p.dob) : '?';
+    const info = `${p.gender || ''} - ${age} tuổi - ${dob} - ${p.phone || 'Chưa có SĐT'}`;
+    document.getElementById('diagnosisPatientInfoDisplay').textContent = info;
+    
+    // Ẩn ô tìm kiếm, hiện thông tin
+    document.getElementById('diagnosisPatientSearch').classList.add('d-none');
+    document.getElementById('diagnosisPatientDisplay').classList.remove('d-none');
+    
+    // Auto-fill bác sĩ nếu đã đăng nhập
+    if (currentUser && currentUser.HoTen) {
+      document.getElementById('doctorName').value = currentUser.HoTen;
+    }
+    
+    // Focus vào trường tiếp theo
+    setTimeout(() => {
+      const nextField = document.getElementById('temperature') || document.getElementById('mainDiagnosis');
+      nextField?.focus();
+    }, 100);
   }
+});
+
+// Nút đổi bệnh nhân trong tab chẩn đoán
+document.getElementById('changeDiagnosisPatient')?.addEventListener('click', () => {
+  selectedPatientForDiagnosis = null;
+  document.getElementById('diagnosisPatientDisplay').classList.add('d-none');
+  document.getElementById('diagnosisPatientSearch').classList.remove('d-none');
+  document.getElementById('searchPatientDiagnosis').value = '';
+  document.getElementById('searchPatientDiagnosis').focus();
+});
+
+// Nút đổi bệnh nhân trong tab đơn thuốc
+document.getElementById('changeRxPatient')?.addEventListener('click', () => {
+  selectedPatientForRx = null;
+  selectedVisitForRx = null;
+  document.getElementById('rxPatientDisplay').classList.add('d-none');
+  document.getElementById('rxPatientSearch').classList.remove('d-none');
+  document.getElementById('searchPatientForRx').value = '';
+  document.getElementById('rxVisitSelect').innerHTML = '<option value="">— Chọn hoặc để trống —</option>';
+  document.getElementById('searchPatientForRx').focus();
+});
+
+// Nút đổi bệnh nhân trong tab kỹ thuật
+document.getElementById('changeTechPatient')?.addEventListener('click', () => {
+  selectedPatientForTech = null;
+  selectedVisitForTech = null;
+  document.getElementById('techPatientDisplay').classList.add('d-none');
+  document.getElementById('techPatientSearch').classList.remove('d-none');
+  document.getElementById('searchPatientTechnique').value = '';
+  document.getElementById('techVisitSelect').innerHTML = '<option value="">— Chọn hoặc để trống —</option>';
+  document.getElementById('searchPatientTechnique').focus();
 });
 
 // =======================
@@ -294,8 +513,16 @@ setupAutocomplete("searchPatientForRx", "rxPatientSuggestions", getPatients, {
   format: p => `${p.name} - ${p.cccd || p.phone || p.bhyt || 'ID:' + p.id}`,
   onSelect: (p) => {
     selectedPatientForRx = p;
-    document.getElementById("rxSelectedPatient").style.display = "block";
-    document.getElementById("rxPatientName").textContent = p.name;
+    // Hiển thị thông tin bệnh nhân
+    document.getElementById('rxPatientNameDisplay').textContent = p.name;
+    const info = [];
+    if (p.dob) info.push(`NS: ${p.dob}`);
+    if (p.gender) info.push(p.gender);
+    if (p.cccd) info.push(`CCCD: ${p.cccd}`);
+    if (p.bhyt) info.push(`BHYT: ${p.bhyt}`);
+    document.getElementById('rxPatientInfoDisplay').textContent = info.join(' • ');
+    document.getElementById('rxPatientDisplay').classList.remove('d-none');
+    document.getElementById('rxPatientSearch').classList.add('d-none');
     loadVisitsForPatient(p.id, "rxVisitSelect");
   }
 });
@@ -308,8 +535,16 @@ setupAutocomplete("searchPatientTechnique", "techPatientSuggestions", getPatient
   format: p => `${p.name} - ${p.cccd || p.phone || p.bhyt || 'ID:' + p.id}`,
   onSelect: (p) => {
     selectedPatientForTech = p;
-    document.getElementById("techSelectedPatient").style.display = "block";
-    document.getElementById("techPatientName").textContent = p.name;
+    // Hiển thị thông tin bệnh nhân
+    document.getElementById('techPatientNameDisplay').textContent = p.name;
+    const info = [];
+    if (p.dob) info.push(`NS: ${p.dob}`);
+    if (p.gender) info.push(p.gender);
+    if (p.cccd) info.push(`CCCD: ${p.cccd}`);
+    if (p.bhyt) info.push(`BHYT: ${p.bhyt}`);
+    document.getElementById('techPatientInfoDisplay').textContent = info.join(' • ');
+    document.getElementById('techPatientDisplay').classList.remove('d-none');
+    document.getElementById('techPatientSearch').classList.add('d-none');
     loadVisitsForPatient(p.id, "techVisitSelect");
   }
 });
@@ -355,6 +590,12 @@ setupAutocomplete("searchTechnique", "techniqueSuggestions", getTechniques, {
     }
     selectedTechniques.push({ ...t, price: 0 }); // Giá = 0
     renderSelectedTechs();
+    // Focus lại ô tìm kiếm để tiếp tục thêm kỹ thuật
+    setTimeout(() => {
+      const searchInput = document.getElementById('searchTechnique');
+      searchInput.value = '';
+      searchInput.focus();
+    }, 100);
   }
 });
 
@@ -455,7 +696,12 @@ document.getElementById("diagnosisForm").addEventListener("submit", async (e) =>
     mainDiagnosis: document.getElementById("mainDiagnosis").value.trim(),
     subDiagnosis: document.getElementById("subDiagnosis").value.trim(),
     symptoms: document.getElementById("symptoms").value.trim(),
-    notes: document.getElementById("doctorNotes").value.trim()
+    notes: document.getElementById("doctorNotes").value.trim(),
+    // Sinh hiệu
+    temperature: document.getElementById("temperature").value,
+    bloodPressure: document.getElementById("bloodPressure").value.trim(),
+    height: document.getElementById("height").value,
+    weight: document.getElementById("weight").value
   };
 
   if (!data.mainDiagnosis) return showToast("Vui lòng nhập chẩn đoán chính!");
@@ -469,11 +715,24 @@ document.getElementById("diagnosisForm").addEventListener("submit", async (e) =>
 
     if (res.ok) {
       const result = await res.json();
-      showToast(`Lưu phiếu khám thành công! ID: ${result.visitId}`);
-      e.target.reset();
-      selectedPatientForDiagnosis = null;
-      document.getElementById("diagnosisSelectedInfo").style.display = "none";
+      
+      // Lưu thông tin workflow
+      currentWorkflowPatient = selectedPatientForDiagnosis;
+      currentWorkflowVisit = result.visitId;
+      
+      showToast(`Lưu phiếu khám thành công! Chuyển sang kỹ thuật...`);
+      // KHÔNG reset form để giữ dữ liệu khi quay lại
       await renderPatients();
+      
+      // Chuyển sang tab kỹ thuật và tự động điền thông tin
+      setTimeout(() => {
+        const tabBtn = document.querySelector('[data-bs-target="#tabTechniques"]');
+        const tab = new bootstrap.Tab(tabBtn);
+        tab.show();
+        
+        // Tự động điền bệnh nhân và visit
+        autoFillTechniqueTab();
+      }, 500);
     } else {
       const err = await res.json();
       showToast("Lỗi: " + (err.error || "Không thể lưu"));
@@ -482,6 +741,53 @@ document.getElementById("diagnosisForm").addEventListener("submit", async (e) =>
     showToast("Lỗi kết nối!");
   }
 });
+
+// =======================
+// AUTO FILL WORKFLOW
+// =======================
+async function autoFillPrescriptionTab() {
+  if (!currentWorkflowPatient || !currentWorkflowVisit) return;
+  
+  // Điền bệnh nhân
+  selectedPatientForRx = currentWorkflowPatient;
+  const p = currentWorkflowPatient;
+  document.getElementById('rxPatientNameDisplay').textContent = p.name;
+  const info = [];
+  if (p.dob) info.push(`NS: ${p.dob}`);
+  if (p.gender) info.push(p.gender);
+  if (p.cccd) info.push(`CCCD: ${p.cccd}`);
+  if (p.bhyt) info.push(`BHYT: ${p.bhyt}`);
+  document.getElementById('rxPatientInfoDisplay').textContent = info.join(' • ');
+  document.getElementById('rxPatientDisplay').classList.remove('d-none');
+  document.getElementById('rxPatientSearch').classList.add('d-none');
+  
+  // Load và chọn visit mới nhất
+  await loadVisitsForPatient(currentWorkflowPatient.id, 'rxVisitSelect');
+  document.getElementById('rxVisitSelect').value = currentWorkflowVisit;
+  selectedVisitForRx = currentWorkflowVisit;
+}
+
+async function autoFillTechniqueTab() {
+  if (!currentWorkflowPatient || !currentWorkflowVisit) return;
+  
+  // Điền bệnh nhân
+  selectedPatientForTech = currentWorkflowPatient;
+  const p = currentWorkflowPatient;
+  document.getElementById('techPatientNameDisplay').textContent = p.name;
+  const info = [];
+  if (p.dob) info.push(`NS: ${p.dob}`);
+  if (p.gender) info.push(p.gender);
+  if (p.cccd) info.push(`CCCD: ${p.cccd}`);
+  if (p.bhyt) info.push(`BHYT: ${p.bhyt}`);
+  document.getElementById('techPatientInfoDisplay').textContent = info.join(' • ');
+  document.getElementById('techPatientDisplay').classList.remove('d-none');
+  document.getElementById('techPatientSearch').classList.add('d-none');
+  
+  // Load và chọn visit mới nhất
+  await loadVisitsForPatient(currentWorkflowPatient.id, 'techVisitSelect');
+  document.getElementById('techVisitSelect').value = currentWorkflowVisit;
+  selectedVisitForTech = currentWorkflowVisit;
+}
 
 // =======================
 // LƯU ĐƠN THUỐC
@@ -512,11 +818,53 @@ document.getElementById("prescriptionForm").addEventListener("submit", async (e)
       showToast(`Lưu đơn thuốc thành công! Tổng: ${result.total.toLocaleString()}đ`);
       selectedMedicines = [];
       renderSelectedMedicines();
-      selectedPatientForRx = null;
-      selectedVisitForRx = null;
-      document.getElementById("rxSelectedPatient").style.display = "none";
-      document.getElementById("rxVisitSelect").innerHTML = '<option value="">— Chọn hoặc để trống —</option>';
-      e.target.reset();
+      
+      // Hoàn tất workflow
+      if (currentWorkflowPatient && currentWorkflowVisit) {
+        setTimeout(() => {
+          showToast("Hoàn tất quy trình khám bệnh!");
+          // Reset toàn bộ workflow
+          currentWorkflowPatient = null;
+          currentWorkflowVisit = null;
+          
+          // Reset tất cả forms
+          document.getElementById("diagnosisForm").reset();
+          document.getElementById("techniqueForm").reset();
+          document.getElementById("prescriptionForm").reset();
+          
+          // Reset patient selections
+          selectedPatientForDiagnosis = null;
+          selectedPatientForTech = null;
+          selectedPatientForRx = null;
+          selectedVisitForRx = null;
+          selectedVisitForTech = null;
+          
+          // Ẩn patient displays
+          document.getElementById("diagnosisPatientDisplay").classList.add("d-none");
+          document.getElementById("diagnosisPatientSearch").classList.remove("d-none");
+          document.getElementById("techPatientDisplay").classList.add("d-none");
+          document.getElementById("techPatientSearch").classList.remove("d-none");
+          document.getElementById("rxPatientDisplay").classList.add("d-none");
+          document.getElementById("rxPatientSearch").classList.remove("d-none");
+          
+          // Reset visit selects
+          document.getElementById("rxVisitSelect").innerHTML = '<option value="">— Chọn hoặc để trống —</option>';
+          document.getElementById("techVisitSelect").innerHTML = '<option value="">— Chọn hoặc để trống —</option>';
+          
+          // Quay về tab bệnh nhân
+          const tabBtn = document.querySelector('[data-bs-target="#tabPatients"]');
+          const tab = new bootstrap.Tab(tabBtn);
+          tab.show();
+        }, 1000);
+      } else {
+        // Không trong workflow, chỉ reset form đơn thuốc
+        selectedPatientForRx = null;
+        selectedVisitForRx = null;
+        document.getElementById("rxPatientDisplay").classList.add("d-none");
+        document.getElementById("rxPatientSearch").classList.remove("d-none");
+        document.getElementById("rxVisitSelect").innerHTML = '<option value="">— Chọn hoặc để trống —</option>';
+        e.target.reset();
+      }
     } else {
       const err = await res.json();
       showToast("Lỗi: " + (err.error || "Không lưu được"));
@@ -532,8 +880,30 @@ document.getElementById("prescriptionForm").addEventListener("submit", async (e)
 document.getElementById("techniqueForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!selectedPatientForTech) return showToast("Chọn bệnh nhân!");
-  if (selectedTechniques.length === 0) return showToast("Chưa chọn kỹ thuật!");
+  
+  console.log('[DEBUG] Technique form submit - currentWorkflowPatient:', currentWorkflowPatient);
+  console.log('[DEBUG] Technique form submit - currentWorkflowVisit:', currentWorkflowVisit);
+  console.log('[DEBUG] selectedTechniques.length:', selectedTechniques.length);
+  
+  // Nếu không có kỹ thuật
+  if (selectedTechniques.length === 0) {
+    // Trong workflow: cho phép bỏ qua và chuyển sang đơn thuốc
+    if (currentWorkflowPatient && currentWorkflowVisit) {
+      showToast("Bỏ qua kỹ thuật, chuyển sang đơn thuốc...");
+      setTimeout(() => {
+        const tabBtn = document.querySelector('[data-bs-target="#tabPrescription"]');
+        const tab = new bootstrap.Tab(tabBtn);
+        tab.show();
+        autoFillPrescriptionTab();
+      }, 500);
+      return;
+    } else {
+      // Không trong workflow: bắt buộc phải chọn kỹ thuật
+      return showToast("Chưa chọn kỹ thuật!");
+    }
+  }
 
+  // Có kỹ thuật -> lưu vào database
   const data = {
     visitId: selectedVisitForTech,
     techniques: selectedTechniques.map(t => ({ id: t.id }))
@@ -548,21 +918,35 @@ document.getElementById("techniqueForm").addEventListener("submit", async (e) =>
 
     if (res.ok) {
       showToast("Lưu chỉ định kỹ thuật thành công!");
+      // Xóa danh sách kỹ thuật đã chọn
       selectedTechniques = [];
       renderSelectedTechs();
-      selectedPatientForTech = null;
-      selectedVisitForTech = null;
-      document.getElementById("techSelectedPatient").style.display = "none";
-      document.getElementById("techVisitSelect").innerHTML = '<option value="">— Chọn hoặc để trống —</option>';
-      e.target.reset();
+      
+      // Luôn chuyển sang đơn thuốc sau khi lưu thành công
+      console.log('[DEBUG] Chuyển sang tab đơn thuốc...');
+      setTimeout(() => {
+        const tabBtn = document.querySelector('[data-bs-target="#tabPrescription"]');
+        const tab = new bootstrap.Tab(tabBtn);
+        tab.show();
+        
+        // Nếu đang trong workflow, tự động điền thông tin
+        if (currentWorkflowPatient && currentWorkflowVisit) {
+          autoFillPrescriptionTab();
+        }
+      }, 500);
     } else {
       const err = await res.json();
       showToast("Lỗi: " + (err.error || "Không lưu được"));
     }
   } catch (err) {
+    console.error('[ERROR] Lỗi kết nối:', err);
     showToast("Lỗi kết nối!");
   }
 });
+
+// =======================
+// NÚT TIẾP TỤC WORKFLOW (Đã tích hợp vào submit handler)
+// =======================
 
 // =======================
 // XEM TRƯỚC ĐƠN THUỐC
@@ -726,7 +1110,134 @@ window.viewHistory = async (patientId) => {
 // INIT
 // =======================
 window.addEventListener("load", async () => {
+  checkAuth();
   await renderPatients();
   renderSelectedMedicines();
   renderSelectedTechs();
+  setupGlobalKeyboardShortcuts();
+  setupEnterToNextField();
 });
+
+// =======================
+// KEYBOARD SHORTCUTS
+// =======================
+function setupGlobalKeyboardShortcuts() {
+  document.addEventListener('keydown', (e) => {
+    // Bỏ qua nếu đang gõ vào input/textarea
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+      return;
+    }
+
+    // Alt + 1: Tab Bệnh nhân
+    if (e.altKey && e.key === '1') {
+      e.preventDefault();
+      const tab = new bootstrap.Tab(document.querySelector('[data-bs-target="#tabPatients"]'));
+      tab.show();
+      showToast('Chuyển sang tab Bệnh nhân');
+    }
+
+    // Alt + 2: Tab Chẩn đoán
+    if (e.altKey && e.key === '2') {
+      e.preventDefault();
+      const tab = new bootstrap.Tab(document.querySelector('[data-bs-target="#tabDiagnosis"]'));
+      tab.show();
+      showToast('Chuyển sang tab Chẩn đoán');
+      setTimeout(() => document.getElementById('searchPatientDiagnosis')?.focus(), 100);
+    }
+
+    // Alt + 3: Tab Kỹ thuật
+    if (e.altKey && e.key === '3') {
+      e.preventDefault();
+      const tab = new bootstrap.Tab(document.querySelector('[data-bs-target="#tabTechniques"]'));
+      tab.show();
+      showToast('Chuyển sang tab Kỹ thuật');
+    }
+
+    // Alt + 4: Tab Đơn thuốc
+    if (e.altKey && e.key === '4') {
+      e.preventDefault();
+      const tab = new bootstrap.Tab(document.querySelector('[data-bs-target="#tabPrescription"]'));
+      tab.show();
+      showToast('Chuyển sang tab Đơn thuốc');
+    }
+
+    // Alt + N: Thêm bệnh nhân mới
+    if (e.altKey && e.key === 'n') {
+      e.preventDefault();
+      const modal = new bootstrap.Modal(document.getElementById('patientModal'));
+      modal.show();
+      setTimeout(() => document.getElementById('modalFullName')?.focus(), 300);
+    }
+
+    // Alt + L: Đăng nhập/Đăng xuất
+    if (e.altKey && e.key === 'l') {
+      e.preventDefault();
+      if (currentUser) {
+        document.getElementById('logoutBtn')?.click();
+      } else {
+        document.getElementById('loginBtn')?.click();
+      }
+    }
+  });
+
+  // Tooltip hiển thị phím tắt (có thể thêm vào UI sau)
+  console.log(`
+    ⌨️ PHÍM TẮT:
+    Alt + 1: Tab Bệnh nhân
+    Alt + 2: Tab Chẩn đoán
+    Alt + 3: Tab Kỹ thuật
+    Alt + 4: Tab Đơn thuốc
+    Alt + N: Thêm bệnh nhân mới
+    Alt + L: Đăng nhập/Đăng xuất
+    
+    🔍 TRONG Ô TÌM KIẾM:
+    ↓ ↑: Di chuyển trong gợi ý
+    Enter: Chọn
+    Esc: Đóng gợi ý
+  `);
+}
+
+// =======================
+// AUTO FOCUS ON ENTER
+// =======================
+function setupEnterToNextField() {
+  // Định nghĩa thứ tự các field trong form chẩn đoán
+  const diagnosisFieldOrder = [
+    'temperature',
+    'bloodPressure', 
+    'height',
+    'weight',
+    'mainDiagnosis',
+    'subDiagnosis',
+    'symptoms',
+    'doctorNotes'
+  ];
+
+  diagnosisFieldOrder.forEach((fieldId, index) => {
+    const field = document.getElementById(fieldId);
+    if (!field) return;
+
+    field.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        
+        // Tìm field tiếp theo
+        const nextIndex = index + 1;
+        if (nextIndex < diagnosisFieldOrder.length) {
+          const nextField = document.getElementById(diagnosisFieldOrder[nextIndex]);
+          if (nextField) {
+            nextField.focus();
+            // Nếu là textarea, đặt cursor ở cuối
+            if (nextField.tagName === 'TEXTAREA') {
+              nextField.setSelectionRange(nextField.value.length, nextField.value.length);
+            }
+          }
+        } else {
+          // Đã đến field cuối cùng, focus vào nút submit
+          const submitBtn = document.querySelector('#diagnosisForm button[type="submit"]');
+          submitBtn?.focus();
+        }
+      }
+    });
+  });
+}

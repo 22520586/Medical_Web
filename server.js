@@ -46,10 +46,32 @@ app.get('/api/patients/search', async (req, res) => {
     try {
         const result = await pool.request()
             .input('q', `%${q}%`)
-            .query(`SELECT MaBenhNhan AS id, HoTen AS name, NgaySinh AS dob, GioiTinh AS gender, 
-                           DiaChi AS address, SoDienThoai AS phone, SoCCCD AS cccd, SoBHYT AS bhyt 
-                    FROM BenhNhan 
-                    WHERE HoTen LIKE @q OR SoDienThoai LIKE @q OR SoCCCD LIKE @q OR SoBHYT LIKE @q`);
+            .input('qStart', `${q}%`)
+            .query(`
+                SELECT TOP 50
+                    MaBenhNhan AS id, 
+                    HoTen AS name, 
+                    NgaySinh AS dob, 
+                    GioiTinh AS gender, 
+                    DiaChi AS address, 
+                    SoDienThoai AS phone, 
+                    SoCCCD AS cccd, 
+                    SoBHYT AS bhyt,
+                    CASE 
+                        WHEN HoTen LIKE @qStart THEN 1
+                        WHEN HoTen LIKE @q THEN 2
+                        WHEN SoDienThoai LIKE @qStart THEN 3
+                        WHEN SoCCCD LIKE @qStart THEN 4
+                        WHEN SoBHYT LIKE @qStart THEN 5
+                        ELSE 6
+                    END AS Priority
+                FROM BenhNhan 
+                WHERE HoTen LIKE @q 
+                   OR SoDienThoai LIKE @q 
+                   OR SoCCCD LIKE @q 
+                   OR SoBHYT LIKE @q
+                ORDER BY Priority, HoTen
+            `);
         res.json(result.recordset);
     } catch (err) {
         console.error('Lỗi tìm bệnh nhân:', err);
@@ -63,8 +85,15 @@ app.get('/api/thuoc/search', async (req, res) => {
     try {
         const result = await pool.request()
             .input('q', `%${q}%`)
-            .query(`SELECT MaThuoc AS id, HoatChat AS name, ISNULL(DonGia, 0) AS price 
-                    FROM DanhMucThuoc WHERE HoatChat LIKE @q`);
+            .query(`
+                SELECT TOP 30
+                    MaThuoc AS id, 
+                    HoatChat AS name, 
+                    ISNULL(DonGia, 0) AS price 
+                FROM DanhMucThuoc 
+                WHERE HoatChat LIKE @q
+                ORDER BY HoatChat
+            `);
         res.json(result.recordset);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -90,15 +119,46 @@ app.get('/api/kythuat/search', async (req, res) => {
     try {
         const result = await pool.request()
             .input('q', `%${q}%`)
-            .query(`SELECT 
-                      MaKyThuat AS id, 
-                      TenKyThuat AS name,
-                      0 AS price  -- GIÁ CỐ ĐỊNH = 0
-                    FROM DanhMucKyThuat 
-                    WHERE TenKyThuat LIKE @q`);
+            .query(`
+                SELECT TOP 30
+                    MaKyThuat AS id, 
+                    TenKyThuat AS name,
+                    0 AS price  -- GIÁ CỐ ĐỊNH = 0
+                FROM DanhMucKyThuat 
+                WHERE TenKyThuat LIKE @q
+                ORDER BY TenKyThuat
+            `);
         res.json(result.recordset);
     } catch (err) {
         console.error('Lỗi tìm kỹ thuật:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// === Đăng nhập ===
+app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const result = await pool.request()
+            .input('username', username)
+            .input('password', password)
+            .query(`SELECT MaTaiKhoan, TenDangNhap, HoTen, VaiTro 
+                    FROM TaiKhoan 
+                    WHERE TenDangNhap = @username AND MatKhau = @password`);
+        
+        if (result.recordset.length === 0) {
+            return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng' });
+        }
+        
+        const user = result.recordset[0];
+        res.json({
+            MaTaiKhoan: user.MaTaiKhoan,
+            TenDangNhap: user.TenDangNhap,
+            HoTen: user.HoTen,
+            VaiTro: user.VaiTro
+        });
+    } catch (err) {
+        console.error('Lỗi đăng nhập:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -206,9 +266,14 @@ app.get('/api/patient/:id/visits', async (req, res) => {
 
 // === Lưu phiếu khám (tạo visit) ===
 app.post('/api/diagnosis', async (req, res) => {
-    const { patientId, doctor, mainDiagnosis, subDiagnosis, symptoms, notes } = req.body;
+    const { patientId, doctor, mainDiagnosis, subDiagnosis, symptoms, notes, 
+            temperature, bloodPressure, height, weight } = req.body;
     try {
-        const result = await pool.request()
+        const transaction = pool.transaction();
+        await transaction.begin();
+
+        // Lưu phiếu khám
+        const visitResult = await transaction.request()
             .input('MaBenhNhan', patientId)
             .input('BacSiKham', doctor)
             .input('ChanDoanChinh', mainDiagnosis)
@@ -221,7 +286,25 @@ app.post('/api/diagnosis', async (req, res) => {
                 OUTPUT INSERTED.MaPhieu AS id
                 VALUES (@MaBenhNhan, @BacSiKham, @ChanDoanChinh, @ChanDoanPhu, @ChanDoanSoBo, @GhiChu)
             `);
-        res.json({ success: true, visitId: result.recordset[0].id });
+        
+        const visitId = visitResult.recordset[0].id;
+
+        // Lưu sinh hiệu nếu có
+        if (temperature || bloodPressure || height || weight) {
+            await transaction.request()
+                .input('MaPhieu', visitId)
+                .input('NhietDo', temperature || null)
+                .input('HuyetAp', bloodPressure || null)
+                .input('ChieuCao', height || null)
+                .input('CanNang', weight || null)
+                .query(`
+                    INSERT INTO SinhHieu (MaPhieu, NhietDo, HuyetAp, ChieuCao, CanNang)
+                    VALUES (@MaPhieu, @NhietDo, @HuyetAp, @ChieuCao, @CanNang)
+                `);
+        }
+
+        await transaction.commit();
+        res.json({ success: true, visitId });
     } catch (err) {
         console.error('Lỗi lưu phiếu khám:', err);
         res.status(500).json({ error: err.message });
@@ -337,14 +420,14 @@ app.post('/api/technique', async (req, res) => {
 // =======================
 // PHỤC VỤ FILE TĨNH (SAU API!)
 // =======================
-app.use(express.static(path.join(__dirname, '../frontend')));
+app.use(express.static(path.join(__dirname, 'frontend')));
 
 // Catch-all: Chỉ trả HTML cho route không phải /api
 app.get('*', (req, res) => {
     if (req.path.startsWith('/api')) {
         return res.status(404).json({ error: 'API không tồn tại' });
     }
-    res.sendFile(path.join(__dirname, '../frontend/MedicalWeb.html'));
+    res.sendFile(path.join(__dirname, 'frontend/MedicalWeb.html'));
 });
 
 // =======================

@@ -16,30 +16,48 @@
   <nav class="navbar navbar-expand-lg navbar-dark shadow-sm">
     <div class="container">
       <a class="navbar-brand" href="#">Hệ thống Quản lý Y tế (Demo)</a>
+      <div class="ms-auto">
+        <div id="userInfo" class="d-none">
+          <span class="text-white me-3">Xin chào, <strong id="userDisplayName"></strong></span>
+          <button class="btn btn-outline-light btn-sm" id="logoutBtn">Đăng xuất</button>
+        </div>
+        <button class="btn btn-outline-light btn-sm" id="loginBtn">Đăng nhập</button>
+      </div>
     </div>
   </nav>
 
   <main class="container my-4">
     <div class="card shadow-sm border-0">
-      <div class="card-header">
+      <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Hồ sơ bệnh nhân & Quy trình khám bệnh</h5>
+        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#shortcutModal" title="Xem phím tắt">
+          <span>⌨️</span> Phím tắt
+        </button>
       </div>
 
       <div class="card-body">
         <!-- TABS -->
         <ul class="nav nav-tabs" id="mainTabs" role="tablist">
-          <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabPatients">Bệnh nhân</button></li>
-          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabDiagnosis">Chẩn đoán</button></li>
-          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabPrescription">Đơn thuốc</button></li>
-          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabTechniques">Kỹ thuật</button></li>
+          <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabPatients" 
+                                       title="Alt+1">Bệnh nhân</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabDiagnosis" 
+                                       title="Alt+2">Chẩn đoán</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabTechniques" 
+                                       title="Alt+3">Kỹ thuật</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabPrescription" 
+                                       title="Alt+4">Đơn thuốc</button></li>
         </ul>
 
         <div class="tab-content mt-4">
           <!-- TAB PATIENTS -->
           <div class="tab-pane fade show active" id="tabPatients">
             <div class="d-flex gap-2 mb-3 align-items-center">
-              <input id="searchPatientMain" class="form-control w-50" placeholder="Tìm bệnh nhân theo tên / CCCD / BHYT...">
-              <button class="btn btn-success ms-auto" data-bs-toggle="modal" data-bs-target="#patientModal">Thêm bệnh nhân</button>
+              <input id="searchPatientMain" class="form-control w-50" 
+                     placeholder="Tìm bệnh nhân theo tên / CCCD / BHYT..."
+                     aria-label="Tìm kiếm bệnh nhân"
+                     autocomplete="off">
+              <button class="btn btn-success ms-auto" data-bs-toggle="modal" data-bs-target="#patientModal" 
+                      title="Thêm bệnh nhân mới (Alt+N)">Thêm bệnh nhân</button>
             </div>
 
             <div class="position-relative">
@@ -74,14 +92,57 @@
                 <form id="diagnosisForm" class="row g-3">
                   <div class="col-md-6 position-relative">
                     <label class="form-label">Chọn bệnh nhân</label>
-                    <input id="searchPatientDiagnosis" class="form-control" placeholder="Gõ tên bệnh nhân...">
-                    <div id="diagnosisPatientSuggestions" class="list-group position-absolute w-100 shadow-sm" style="z-index:1000; display:none; max-height:200px; overflow-y:auto;"></div>
-                    <div id="diagnosisSelectedInfo" class="mt-2 small text-muted" style="display:none;">Đã chọn: <strong id="diagnosisPatientName"></strong></div>
+                    <div id="diagnosisPatientDisplay" class="d-none">
+                      <div class="alert alert-info d-flex justify-content-between align-items-center mb-0">
+                        <div>
+                          <strong id="diagnosisPatientNameDisplay"></strong>
+                          <div class="small" id="diagnosisPatientInfoDisplay"></div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="changeDiagnosisPatient">Đổi bệnh nhân</button>
+                      </div>
+                    </div>
+                    <div id="diagnosisPatientSearch">
+                      <input id="searchPatientDiagnosis" class="form-control" 
+                             placeholder="Gõ tên bệnh nhân..."
+                             aria-label="Tìm kiếm bệnh nhân cho chẩn đoán"
+                             autocomplete="off">
+                      <div id="diagnosisPatientSuggestions" class="list-group position-absolute w-100 shadow-sm" 
+                           style="z-index:1000; display:none; max-height:200px; overflow-y:auto;"
+                           role="listbox"></div>
+                    </div>
                   </div>
 
                   <div class="col-md-6">
                     <label class="form-label">Bác sĩ khám</label>
                     <input id="doctorName" class="form-control" placeholder="Tên bác sĩ">
+                  </div>
+
+                  <div class="col-12">
+                    <h6 class="text-primary mt-3 mb-2">Sinh hiệu</h6>
+                  </div>
+
+                  <div class="col-md-3">
+                    <label class="form-label">Nhiệt độ (°C)</label>
+                    <input id="temperature" type="number" step="0.1" class="form-control" placeholder="36.5">
+                  </div>
+
+                  <div class="col-md-3">
+                    <label class="form-label">Huyết áp (mmHg)</label>
+                    <input id="bloodPressure" class="form-control" placeholder="120/80">
+                  </div>
+
+                  <div class="col-md-3">
+                    <label class="form-label">Chiều cao (cm)</label>
+                    <input id="height" type="number" class="form-control" placeholder="170">
+                  </div>
+
+                  <div class="col-md-3">
+                    <label class="form-label">Cân nặng (kg)</label>
+                    <input id="weight" type="number" step="0.1" class="form-control" placeholder="65.5">
+                  </div>
+
+                  <div class="col-12">
+                    <h6 class="text-primary mt-3 mb-2">Chẩn đoán</h6>
                   </div>
 
                   <div class="col-md-6">
@@ -104,9 +165,9 @@
                   </div>
 
                   <div class="col-12 d-flex justify-content-between align-items-center">
-                    <div class="small text-muted">(*) Sau khi lưu sẽ tạo một <strong>lần khám (visit)</strong>.</div>
+                    <div class="small text-muted">(*) Sau khi lưu sẽ tạo một <strong>lần khám (visit)</strong> và chuyển sang tab kỹ thuật.</div>
                     <div>
-                      <button class="btn btn-success" type="submit">Lưu phiếu khám</button>
+                      <button class="btn btn-success" type="submit">Tiếp tục →</button>
                     </div>
                   </div>
                 </form>
@@ -122,9 +183,19 @@
                 <form id="prescriptionForm" class="row g-3">
                   <div class="col-md-4 position-relative">
                     <label class="form-label">Bệnh nhân</label>
-                    <input id="searchPatientForRx" class="form-control" placeholder="Gõ để tìm bệnh nhân...">
-                    <div id="rxPatientSuggestions" class="list-group position-absolute w-100 shadow-sm" style="z-index:1000; display:none; max-height:200px; overflow-y:auto;"></div>
-                    <div id="rxSelectedPatient" class="mt-2 small text-muted" style="display:none;">Đã chọn: <strong id="rxPatientName"></strong></div>
+                    <div id="rxPatientDisplay" class="d-none">
+                      <div class="alert alert-info d-flex justify-content-between align-items-center mb-0">
+                        <div>
+                          <strong id="rxPatientNameDisplay"></strong>
+                          <div class="small" id="rxPatientInfoDisplay"></div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="changeRxPatient">Đổi bệnh nhân</button>
+                      </div>
+                    </div>
+                    <div id="rxPatientSearch">
+                      <input id="searchPatientForRx" class="form-control" placeholder="Gõ để tìm bệnh nhân...">
+                      <div id="rxPatientSuggestions" class="list-group position-absolute w-100 shadow-sm" style="z-index:1000; display:none; max-height:200px; overflow-y:auto;"></div>
+                    </div>
                   </div>
 
                   <div class="col-md-4">
@@ -165,9 +236,19 @@
                 <form id="techniqueForm" class="row g-3">
                   <div class="col-md-4 position-relative">
                     <label class="form-label">Bệnh nhân</label>
-                    <input id="searchPatientTechnique" class="form-control" placeholder="Gõ để tìm bệnh nhân...">
-                    <div id="techPatientSuggestions" class="list-group position-absolute w-100 shadow-sm" style="z-index:1000; display:none; max-height:200px; overflow-y:auto;"></div>
-                    <div id="techSelectedPatient" class="mt-2 small text-muted" style="display:none;">Đã chọn: <strong id="techPatientName"></strong></div>
+                    <div id="techPatientDisplay" class="d-none">
+                      <div class="alert alert-info d-flex justify-content-between align-items-center mb-0">
+                        <div>
+                          <strong id="techPatientNameDisplay"></strong>
+                          <div class="small" id="techPatientInfoDisplay"></div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="changeTechPatient">Đổi bệnh nhân</button>
+                      </div>
+                    </div>
+                    <div id="techPatientSearch">
+                      <input id="searchPatientTechnique" class="form-control" placeholder="Gõ để tìm bệnh nhân...">
+                      <div id="techPatientSuggestions" class="list-group position-absolute w-100 shadow-sm" style="z-index:1000; display:none; max-height:200px; overflow-y:auto;"></div>
+                    </div>
                   </div>
 
                   <div class="col-md-4">
@@ -191,9 +272,12 @@
                     </div>
                   </div>
 
-                  <div class="col-12 d-flex gap-2 justify-content-end">
-                    <button id="previewTechniqueBtn" type="button" class="btn btn-outline-primary">Xem trước phiếu</button>
-                    <button class="btn btn-success" type="submit">Lưu chỉ định</button>
+                  <div class="col-12 d-flex gap-2 justify-content-between align-items-center">
+                    <div class="small text-muted">(*) Sau khi lưu sẽ chuyển sang tab đơn thuốc.</div>
+                    <div class="d-flex gap-2">
+                      <button id="previewTechniqueBtn" type="button" class="btn btn-outline-primary">Xem trước phiếu</button>
+                      <button class="btn btn-success" type="submit">Tiếp tục →</button>
+                    </div>
                   </div>
                 </form>
               </div>
@@ -204,6 +288,35 @@
       </div>
     </div>
   </main>
+
+  <!-- MODAL: Đăng nhập -->
+  <div class="modal fade" id="loginModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="loginForm">
+          <div class="modal-header">
+            <h5 class="modal-title">Đăng nhập hệ thống</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Tên đăng nhập</label>
+              <input id="loginUsername" class="form-control" required autocomplete="username">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Mật khẩu</label>
+              <input id="loginPassword" type="password" class="form-control" required autocomplete="current-password">
+            </div>
+            <div id="loginError" class="alert alert-danger d-none" role="alert"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-primary" type="submit">Đăng nhập</button>
+            <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Hủy</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL: Thêm / Sửa bệnh nhân -->
   <div class="modal fade" id="patientModal" tabindex="-1">
@@ -274,6 +387,49 @@
         <div class="modal-header"><h5 class="modal-title">Lịch sử khám</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
         <div class="modal-body" id="historyBody"></div>
         <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Keyboard Shortcuts Modal -->
+  <div class="modal fade" id="shortcutModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">⌨️ Phím tắt</h5>
+          <button class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <h6 class="text-primary">Điều hướng Tab</h6>
+          <table class="table table-sm">
+            <tbody>
+              <tr><td><kbd>Alt</kbd> + <kbd>1</kbd></td><td>Tab Bệnh nhân</td></tr>
+              <tr><td><kbd>Alt</kbd> + <kbd>2</kbd></td><td>Tab Chẩn đoán</td></tr>
+              <tr><td><kbd>Alt</kbd> + <kbd>3</kbd></td><td>Tab Kỹ thuật</td></tr>
+              <tr><td><kbd>Alt</kbd> + <kbd>4</kbd></td><td>Tab Đơn thuốc</td></tr>
+            </tbody>
+          </table>
+
+          <h6 class="text-primary mt-3">Thao tác nhanh</h6>
+          <table class="table table-sm">
+            <tbody>
+              <tr><td><kbd>Alt</kbd> + <kbd>N</kbd></td><td>Thêm bệnh nhân mới</td></tr>
+              <tr><td><kbd>Alt</kbd> + <kbd>L</kbd></td><td>Đăng nhập / Đăng xuất</td></tr>
+            </tbody>
+          </table>
+
+          <h6 class="text-primary mt-3">Trong ô tìm kiếm</h6>
+          <table class="table table-sm">
+            <tbody>
+              <tr><td><kbd>↓</kbd> / <kbd>↑</kbd></td><td>Di chuyển trong gợi ý</td></tr>
+              <tr><td><kbd>Enter</kbd></td><td>Chọn mục được highlight</td></tr>
+              <tr><td><kbd>Esc</kbd></td><td>Đóng danh sách gợi ý</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+        </div>
       </div>
     </div>
   </div>

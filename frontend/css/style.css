@@ -20,6 +20,8 @@ body { background-color: #f7f9fb; font-family: system-ui, -apple-system, "Segoe 
 
 /* Autocomplete suggestion hover */
 .list-group-item-action:hover { background-color: #e9f3ff; cursor: pointer; }
+.list-group-item-action.active { background-color: #0d6efd; color: white; }
+.list-group-item-action:focus { outline: 2px solid #0d6efd; }
 
 /* Badges & selected pills */
 .badge { font-size: 0.95rem; }
@@ -37,7 +39,33 @@ body { background-color: #f7f9fb; font-family: system-ui, -apple-system, "Segoe 
 /* Visit select */
 #rxVisitSelect, #techVisitSelect { margin-top: 6px; }
 
+/* Login section */
+#userInfo { display: flex; align-items: center; }
+#loginBtn, #logoutBtn { border-radius: 20px; padding: 6px 20px; }
+
+/* Patient display in forms */
+#diagnosisPatientDisplay .alert-info {
+  background-color: #e7f3ff;
+  border-left: 4px solid #0d6efd;
+}
+
+/* Keyboard shortcuts */
+kbd {
+  background-color: #f7f7f7;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.2);
+  color: #333;
+  display: inline-block;
+  font-family: monospace;
+  font-size: 0.85em;
+  line-height: 1.4;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
 /* Responsive tweaks */
 @media (max-width: 768px) {
   #searchPatientMain { width: 100% !important; }
+  #userInfo span { display: none; }
 }
