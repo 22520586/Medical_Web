@@ -46,6 +46,8 @@
                                        title="Alt+3">Kỹ thuật</button></li>
           <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabPrescription" 
                                        title="Alt+4">Đơn thuốc</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabInvoice" 
+                                       title="Alt+5">Hóa đơn</button></li>
         </ul>
 
         <div class="tab-content mt-4">
@@ -290,6 +292,97 @@
             </div>
           </div>
 
+          <!-- TAB INVOICE -->
+<div class="tab-pane fade" id="tabInvoice">
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-success text-white">Tổng hợp chi phí & Hóa đơn</div>
+    <div class="card-body">
+
+      <form id="invoiceForm" class="row g-3">
+
+        <!-- Patient selection -->
+        <div class="col-md-4 position-relative">
+          <label class="form-label">Bệnh nhân</label>
+          <div id="invoicePatientDisplay" class="d-none">
+            <div class="alert alert-info d-flex justify-content-between align-items-center mb-0">
+              <div>
+                <strong id="invoicePatientNameDisplay"></strong>
+                <div class="small" id="invoicePatientInfoDisplay"></div>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="changeInvoicePatient">
+                Đổi bệnh nhân
+              </button>
+            </div>
+          </div>
+
+          <div id="invoicePatientSearch">
+            <input id="searchPatientInvoice" class="form-control" placeholder="Gõ để tìm bệnh nhân…">
+            <div id="invoicePatientSuggestions" 
+                 class="list-group position-absolute w-100 shadow-sm"
+                 style="z-index:1000; display:none; max-height:200px; overflow-y:auto;">
+            </div>
+          </div>
+        </div>
+
+        <!-- Visits -->
+        <div class="col-md-4">
+          <label class="form-label">Chọn lần khám (visit)</label>
+          <select id="invoiceVisitSelect" class="form-select">
+            <option value="">— Chọn visit —</option>
+          </select>
+          <div class="small text-muted">Chi phí sẽ được tổng hợp từ visit này.</div>
+        </div>
+
+        <!-- Button load -->
+        <div class="col-md-4 d-flex align-items-end">
+          <button id="loadInvoiceBtn" type="button" class="btn btn-primary w-100">Tải dữ liệu</button>
+        </div>
+
+        <!-- Summary -->
+        <div class="col-12">
+          <h6 class="text-primary">Chi phí tổng hợp</h6>
+        </div>
+
+        <div class="col-12">
+          <table class="table table-bordered align-middle">
+            <thead>
+              <tr>
+                <th>Loại</th>
+                <th>Mô tả</th>
+                <th class="text-end">Đơn giá (VNĐ)</th>
+              </tr>
+            </thead>
+            <tbody id="invoiceSummaryBody">
+              <!-- Auto-filled by JS -->
+            </tbody>
+            <tfoot>
+              <tr>
+                <th colspan="2" class="text-end">Tổng cộng:</th>
+                <th class="text-end" id="invoiceTotal">0</th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div class="col-12 d-flex justify-content-between">
+          <button type="button" id="resetInvoiceBtn" class="btn btn-outline-secondary btn-sm">
+            🔄 Bệnh nhân mới
+          </button>
+
+          <div>
+            <button type="button" id="previewInvoiceBtn" class="btn btn-outline-primary">
+              Xem trước hóa đơn
+            </button>
+            <button type="submit" class="btn btn-success">
+              In / Xuất PDF
+            </button>
+          </div>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
         </div> <!-- /.tab-content -->
       </div>
     </div>
@@ -440,6 +533,23 @@
     </div>
   </div>
 
+  <!-- Preview Invoice Modal -->
+<div class="modal fade" id="previewInvoiceModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Xem trước hóa đơn</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="previewInvoiceBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+        <button class="btn btn-primary" id="printInvoiceBtn">In / Xuất PDF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
   <!-- Toast (notification) -->
   <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
     <div id="appToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
@@ -455,4 +565,5 @@
   <!-- Local JS -->
   <script src="js/script.js"></script>
 </body>
+
 </html>
