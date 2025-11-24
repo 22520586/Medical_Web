@@ -439,3 +439,93 @@ app.listen(PORT, () => {
     console.log(`Test API: http://localhost:${PORT}/api/patients/search?q=a`);
     console.log(`Demo HIS: http://localhost:${PORT}/MedicalWeb.html`);
 });
+
+// ===============================
+// NẠP THÔNG TIN HÓA ĐƠN VÀO HTML HIỆN CÓ
+// ===============================
+async function loadInvoice(visitId) {
+  try {
+    // 1. Lấy danh sách thuốc của lần khám
+    const resThuoc = await fetch(`${API_BASE}/visit/${visitId}/prescription`);
+    const thuoc = await resThuoc.json();
+
+    // 2. Lấy danh sách kỹ thuật
+    const resKT = await fetch(`${API_BASE}/visit/${visitId}/techniques`);
+    const kyThuat = await resKT.json();
+
+    // ============================
+    // ĐỔ DỮ LIỆU VÀO KHU VỰC HTML
+    // ============================
+
+    // --- Gán mã phiếu khám ---
+    if (document.getElementById("invoiceVisitId"))
+      document.getElementById("invoiceVisitId").textContent = visitId;
+
+    // --- Thuốc ---
+    let htmlThuoc = "";
+    let tongThuoc = 0;
+
+    thuoc.forEach(t => {
+      const thanhTien = t.quantity * t.price;
+      tongThuoc += thanhTien;
+
+      htmlThuoc += `
+        <tr>
+          <td>${t.name}</td>
+          <td>${t.quantity}</td>
+          <td>${t.price.toLocaleString()}</td>
+          <td>${thanhTien.toLocaleString()}</td>
+        </tr>
+      `;
+    });
+
+    if (document.getElementById("invoiceMedicineList"))
+      document.getElementById("invoiceMedicineList").innerHTML = htmlThuoc;
+
+
+    // --- Kỹ thuật ---
+    let htmlKT = "";
+    let tongKyThuat = 0;
+
+    kyThuat.forEach(k => {
+      const gia = k.price || 0;
+      tongKyThuat += gia;
+
+      htmlKT += `
+        <tr>
+          <td>${k.name}</td>
+          <td>${gia.toLocaleString()}</td>
+        </tr>
+      `;
+    });
+
+    if (document.getElementById("invoiceTechniqueList"))
+      document.getElementById("invoiceTechniqueList").innerHTML = htmlKT;
+
+
+    // --- Tổng ---
+    if (document.getElementById("invoiceTotalMedicine"))
+      document.getElementById("invoiceTotalMedicine").textContent = tongThuoc.toLocaleString();
+
+    if (document.getElementById("invoiceTotalTechnique"))
+      document.getElementById("invoiceTotalTechnique").textContent = tongKyThuat.toLocaleString();
+
+    if (document.getElementById("invoiceTotalAll"))
+      document.getElementById("invoiceTotalAll").textContent = (tongThuoc + tongKyThuat).toLocaleString();
+
+  } catch (err) {
+    console.error("Lỗi load hóa đơn:", err);
+  }
+}
+
+
+// ===============================
+// CALL HÀM NÀY KHI CLICK CHỌN LẦN KHÁM
+// ===============================
+function openInvoiceTab(visitId) {
+  loadInvoice(visitId);
+
+  // chuyển sang tab hóa đơn (nếu HTML của bạn có tab bootstrap)
+  const invoiceTab = document.querySelector('[data-bs-target="#invoice"]');
+  if (invoiceTab) invoiceTab.click();
+}
