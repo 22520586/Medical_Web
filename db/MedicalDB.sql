@@ -137,6 +137,14 @@ CREATE TABLE dbo.TaiKhoan (
 );
 GO
 
+-- Thêm dữ liệu mẫu cho bảng TaiKhoan
+INSERT INTO dbo.TaiKhoan (TenDangNhap, MatKhau, HoTen, VaiTro) VALUES
+('admin', '123456', N'Quản trị viên', N'Admin'),
+('bacsi1', '123456', N'BS. Nguyễn Văn A', N'Bác sĩ'),
+('bacsi2', '123456', N'BS. Trần Thị B', N'Bác sĩ'),
+('yta', '123456', N'Y tá Lê Văn C', N'Y tá');
+GO
+
 ---------------------------------------------------
 -- 9. INDEX TỐI ƯU (KHÔNG DÙNG FK)
 ---------------------------------------------------
@@ -154,7 +162,7 @@ GO
 ---------------------------------------------------
 -- Danh mục kỹ thuật
 BULK INSERT dbo.DanhMucKyThuat
-FROM 'D:\Hệ thống y tế\Đồ án\MedicalWeb\Data\danh_muc_ky_thuat.txt'
+FROM 'D:\MEDICAL_WEB\Data\Danh_muc_ky_thuat_txt'
 WITH (
     FIELDTERMINATOR = '\t',
     ROWTERMINATOR = '\n',
@@ -179,7 +187,7 @@ CREATE TABLE dbo.ThuocTam (
 GO
 
 BULK INSERT dbo.ThuocTam
-FROM 'D:\Hệ thống y tế\Đồ án\MedicalWeb\Data\Gia_thuoc_vat_tu_y_te_csv.txt'
+FROM 'D:\Data\Gia_thuoc_vat_tu_y_te_csv.txt'
 WITH (
     FIELDTERMINATOR = '\t',
     ROWTERMINATOR = '\n',
