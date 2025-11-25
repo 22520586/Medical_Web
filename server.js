@@ -51,7 +51,7 @@ app.get('/api/patients/search', async (req, res) => {
                 SELECT TOP 50
                     MaBenhNhan AS id, 
                     HoTen AS name, 
-                    NgaySinh AS dob, 
+                    CONVERT(VARCHAR(10), NgaySinh, 23) AS dob, 
                     GioiTinh AS gender, 
                     DiaChi AS address, 
                     SoDienThoai AS phone, 
@@ -307,6 +307,28 @@ app.post('/api/diagnosis', async (req, res) => {
         res.json({ success: true, visitId });
     } catch (err) {
         console.error('Lỗi lưu phiếu khám:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// === Lấy danh sách lần khám của bệnh nhân ===
+app.get('/api/visits/:patientId', async (req, res) => {
+    const { patientId } = req.params;
+    try {
+        const result = await pool.request()
+            .input('patientId', patientId)
+            .query(`
+                SELECT 
+                    MaPhieu AS visitId,
+                    NgayKham AS ngayKham,
+                    ChanDoanChinh AS chanDoan
+                FROM PhieuKham
+                WHERE MaBenhNhan = @patientId
+                ORDER BY NgayKham DESC
+            `);
+        res.json(result.recordset);
+    } catch (err) {
+        console.error('Lỗi lấy lịch sử khám:', err);
         res.status(500).json({ error: err.message });
     }
 });

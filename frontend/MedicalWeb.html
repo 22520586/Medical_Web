@@ -38,15 +38,15 @@
       <div class="card-body">
         <!-- TABS -->
         <ul class="nav nav-tabs" id="mainTabs" role="tablist">
-          <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabPatients" 
+          <li class="nav-item"><button id="patients-tab" class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabPatients" 
                                        title="Alt+1">Bệnh nhân</button></li>
-          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabDiagnosis" 
+          <li class="nav-item"><button id="diagnosis-tab" class="nav-link" data-bs-toggle="tab" data-bs-target="#tabDiagnosis" 
                                        title="Alt+2">Chẩn đoán</button></li>
-          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabTechniques" 
+          <li class="nav-item"><button id="techniques-tab" class="nav-link" data-bs-toggle="tab" data-bs-target="#tabTechniques" 
                                        title="Alt+3">Kỹ thuật</button></li>
-          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabPrescription" 
+          <li class="nav-item"><button id="prescription-tab" class="nav-link" data-bs-toggle="tab" data-bs-target="#tabPrescription" 
                                        title="Alt+4">Đơn thuốc</button></li>
-          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabInvoice" 
+          <li class="nav-item"><button id="invoice-tab" class="nav-link" data-bs-toggle="tab" data-bs-target="#tabInvoice" 
                                        title="Alt+5">Hóa đơn</button></li>
         </ul>
 
@@ -58,7 +58,7 @@
                      placeholder="Tìm bệnh nhân theo tên / CCCD / BHYT..."
                      aria-label="Tìm kiếm bệnh nhân"
                      autocomplete="off">
-              <button class="btn btn-success ms-auto" data-bs-toggle="modal" data-bs-target="#patientModal" 
+              <button class="btn btn-success ms-auto" data-bs-toggle="modal" data-bs-target="#patientFormModal" 
                       title="Thêm bệnh nhân mới (Alt+N)">Thêm bệnh nhân</button>
             </div>
 
@@ -81,7 +81,7 @@
                     <th>Hành động</th>
                   </tr>
                 </thead>
-                <tbody id="patientTableBody"></tbody>
+                <tbody id="patientsTableBody"></tbody>
               </table>
             </div>
           </div>
@@ -92,31 +92,35 @@
               <div class="card-header bg-info text-white">Phiếu khám / Chẩn đoán</div>
               <div class="card-body">
                 <form id="diagnosisForm" class="row g-3">
-                  <div class="col-md-6 position-relative">
+                  <!-- Hidden patient ID -->
+                  <input type="hidden" id="patientIdDiagnosis">
+                  
+                  <div class="col-12">
                     <label class="form-label">Chọn bệnh nhân</label>
-                    <div id="diagnosisPatientDisplay" class="d-none">
-                      <div class="alert alert-info d-flex justify-content-between align-items-center mb-0">
-                        <div>
-                          <strong id="diagnosisPatientNameDisplay"></strong>
-                          <div class="small" id="diagnosisPatientInfoDisplay"></div>
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="changeDiagnosisPatient">Đổi bệnh nhân</button>
+                    <!-- Patient info display section -->
+                    <div id="infoSectionDiagnosis" class="d-none mb-3">
+                      <div class="alert alert-info">
+                        <strong id="patientNameDiagnosis"></strong> - 
+                        <span id="patientDOBDiagnosis"></span> - 
+                        <span id="patientGenderDiagnosis"></span><br>
+                        <small>Địa chỉ: <span id="patientAddressDiagnosis"></span></small><br>
+                        <small>SĐT: <span id="patientPhoneDiagnosis"></span></small>
+                        <button type="button" class="btn btn-sm btn-outline-secondary float-end" id="changeDiagnosisPatient">Đổi bệnh nhân</button>
                       </div>
+                      <select id="visitSelectDiagnosis" class="form-select mb-2">
+                        <option value="">-- Chọn lần khám --</option>
+                      </select>
                     </div>
-                    <div id="diagnosisPatientSearch">
-                      <input id="searchPatientDiagnosis" class="form-control" 
-                             placeholder="Gõ tên bệnh nhân..."
-                             aria-label="Tìm kiếm bệnh nhân cho chẩn đoán"
-                             autocomplete="off">
-                      <div id="diagnosisPatientSuggestions" class="list-group position-absolute w-100 shadow-sm" 
-                           style="z-index:1000; display:none; max-height:200px; overflow-y:auto;"
-                           role="listbox"></div>
-                    </div>
+                    
+                    <!-- Search patient -->
+                    <input id="searchPatientDiagnosis" class="form-control" 
+                           placeholder="Gõ tên bệnh nhân..."
+                           autocomplete="off">
                   </div>
 
                   <div class="col-md-6">
                     <label class="form-label">Bác sĩ khám</label>
-                    <input id="doctorName" class="form-control" placeholder="Tên bác sĩ">
+                    <input id="doctor" class="form-control" placeholder="Tên bác sĩ">
                   </div>
 
                   <div class="col-12">
@@ -163,7 +167,7 @@
 
                   <div class="col-12">
                     <label class="form-label">Ghi chú bác sĩ</label>
-                    <textarea id="doctorNotes" rows="2" class="form-control"></textarea>
+                    <textarea id="notes" rows="2" class="form-control"></textarea>
                   </div>
 
                   <div class="col-12 d-flex justify-content-between align-items-center">
@@ -183,49 +187,46 @@
               <div class="card-header bg-warning">Kê đơn thuốc</div>
               <div class="card-body">
                 <form id="prescriptionForm" class="row g-3">
-                  <div class="col-md-4 position-relative">
-                    <label class="form-label">Bệnh nhân</label>
-                    <div id="rxPatientDisplay" class="d-none">
-                      <div class="alert alert-info d-flex justify-content-between align-items-center mb-0">
-                        <div>
-                          <strong id="rxPatientNameDisplay"></strong>
-                          <div class="small" id="rxPatientInfoDisplay"></div>
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="changeRxPatient">Đổi bệnh nhân</button>
+                  <!-- Hidden patient ID -->
+                  <input type="hidden" id="patientIdForRx">
+                  
+                  <div class="col-12">
+                    <label class="form-label">Chọn bệnh nhân</label>
+                    <!-- Patient info display section -->
+                    <div id="infoSectionForRx" class="d-none mb-3">
+                      <div class="alert alert-info">
+                        <strong id="patientNameForRx"></strong> - 
+                        <span id="patientDOBForRx"></span> - 
+                        <span id="patientGenderForRx"></span><br>
+                        <small>Địa chỉ: <span id="patientAddressForRx"></span></small><br>
+                        <small>SĐT: <span id="patientPhoneForRx"></span></small>
+                        <button type="button" class="btn btn-sm btn-outline-secondary float-end" id="changeRxPatient">Đổi bệnh nhân</button>
                       </div>
+                      <select id="visitSelectForRx" class="form-select mb-2">
+                        <option value="">-- Chọn lần khám --</option>
+                      </select>
                     </div>
-                    <div id="rxPatientSearch">
-                      <input id="searchPatientForRx" class="form-control" placeholder="Gõ để tìm bệnh nhân...">
-                      <div id="rxPatientSuggestions" class="list-group position-absolute w-100 shadow-sm" style="z-index:1000; display:none; max-height:200px; overflow-y:auto;"></div>
-                    </div>
+                    
+                    <!-- Search patient -->
+                    <input id="searchPatientForRx" class="form-control" 
+                           placeholder="Gõ tên bệnh nhân..."
+                           autocomplete="off">
                   </div>
 
-                  <div class="col-md-4">
-                    <label class="form-label">Chọn lần khám (visit)</label>
-                    <select id="rxVisitSelect" class="form-select">
-                      <option value="">— Chọn hoặc để trống —</option>
-                    </select>
-                    <div class="small text-muted">Nếu chọn visit, đơn thuốc sẽ gắn vào lần khám đó.</div>
-                  </div>
-
-                  <div class="col-md-4 position-relative">
-                    <label class="form-label">Thuốc</label>
-                    <input id="searchMedicine" class="form-control" placeholder="Gõ tên thuốc...">
-                    <div id="medicineSuggestions" class="list-group position-absolute w-100 shadow-sm" style="z-index:1000; display:none; max-height:200px; overflow-y:auto;"></div>
+                  <div class="col-md-6">
+                    <label class="form-label">Tìm thuốc</label>
+                    <input id="searchMedicine" class="form-control" placeholder="Gõ tên thuốc..." autocomplete="off">
                   </div>
 
                   <div class="col-12">
-                    <div class="mt-2">
-                      <label class="form-label">Đã chọn:</label>
-                      <div id="selectedMedicines" class="d-flex flex-column gap-2"></div>
-                    </div>
+                    <label class="form-label">Danh sách thuốc đã chọn:</label>
+                    <div id="selectedMedicinesDiv"></div>
                   </div>
 
                   <div class="col-12 d-flex gap-2 justify-content-between align-items-center">
                     <button id="resetRxFormBtn" type="button" class="btn btn-outline-secondary btn-sm">🔄 Bệnh nhân mới</button>
                     <div class="d-flex gap-2">
-                      <button id="previewPrescriptionBtn" type="button" class="btn btn-outline-primary">Xem trước đơn</button>
-                      <button class="btn btn-success" type="submit">Lưu đơn thuốc</button>
+                      <button id="prescriptionSubmitBtn" class="btn btn-success" type="submit">Lưu đơn thuốc</button>
                     </div>
                   </div>
                 </form>
@@ -239,52 +240,46 @@
               <div class="card-header bg-secondary text-white">Chỉ định kỹ thuật</div>
               <div class="card-body">
                 <form id="techniqueForm" class="row g-3">
-                  <div class="col-md-4 position-relative">
-                    <label class="form-label">Bệnh nhân</label>
-                    <div id="techPatientDisplay" class="d-none">
-                      <div class="alert alert-info d-flex justify-content-between align-items-center mb-0">
-                        <div>
-                          <strong id="techPatientNameDisplay"></strong>
-                          <div class="small" id="techPatientInfoDisplay"></div>
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="changeTechPatient">Đổi bệnh nhân</button>
+                  <!-- Hidden patient ID -->
+                  <input type="hidden" id="patientIdTechnique">
+                  
+                  <div class="col-12">
+                    <label class="form-label">Chọn bệnh nhân</label>
+                    <!-- Patient info display section -->
+                    <div id="infoSectionTechnique" class="d-none mb-3">
+                      <div class="alert alert-info">
+                        <strong id="patientNameTechnique"></strong> - 
+                        <span id="patientDOBTechnique"></span> - 
+                        <span id="patientGenderTechnique"></span><br>
+                        <small>Địa chỉ: <span id="patientAddressTechnique"></span></small><br>
+                        <small>SĐT: <span id="patientPhoneTechnique"></span></small>
+                        <button type="button" class="btn btn-sm btn-outline-secondary float-end" id="changeTechPatient">Đổi bệnh nhân</button>
                       </div>
+                      <select id="visitSelectTechnique" class="form-select mb-2">
+                        <option value="">-- Chọn lần khám --</option>
+                      </select>
                     </div>
-                    <div id="techPatientSearch">
-                      <input id="searchPatientTechnique" class="form-control" placeholder="Gõ để tìm bệnh nhân...">
-                      <div id="techPatientSuggestions" class="list-group position-absolute w-100 shadow-sm" style="z-index:1000; display:none; max-height:200px; overflow-y:auto;"></div>
-                    </div>
+                    
+                    <!-- Search patient -->
+                    <input id="searchPatientTechnique" class="form-control" 
+                           placeholder="Gõ tên bệnh nhân..."
+                           autocomplete="off">
                   </div>
 
-                  <div class="col-md-4">
-                    <label class="form-label">Chọn lần khám (visit)</label>
-                    <select id="techVisitSelect" class="form-select">
-                      <option value="">— Chọn hoặc để trống —</option>
-                    </select>
-                    <div class="small text-muted">Nếu chọn visit, chỉ định sẽ gắn vào lần khám đó.</div>
-                  </div>
-
-                  <div class="col-md-4 position-relative">
-                    <label class="form-label">Kỹ thuật</label>
-                    <input id="searchTechnique" class="form-control" placeholder="Gõ tên kỹ thuật...">
-                    <div id="techniqueSuggestions" class="list-group position-absolute w-100 shadow-sm" style="z-index:1000; display:none; max-height:200px; overflow-y:auto;"></div>
+                  <div class="col-md-6">
+                    <label class="form-label">Tìm kỹ thuật</label>
+                    <input id="searchTechnique" class="form-control" placeholder="Gõ tên kỹ thuật..." autocomplete="off">
                   </div>
 
                   <div class="col-12">
-                    <div class="mt-2">
-                      <label class="form-label">Đã chọn:</label>
-                      <div id="selectedTechniques" class="d-flex flex-column gap-2"></div>
-                    </div>
+                    <label class="form-label">Danh sách kỹ thuật đã chọn:</label>
+                    <div id="selectedTechsDiv"></div>
                   </div>
 
                   <div class="col-12 d-flex gap-2 justify-content-between align-items-center">
+                    <button id="resetTechFormBtn" type="button" class="btn btn-outline-secondary btn-sm">🔄 Bệnh nhân mới</button>
                     <div class="d-flex gap-2">
-                      <button id="resetTechFormBtn" type="button" class="btn btn-outline-secondary btn-sm">🔄 Bệnh nhân mới</button>
-                      <div class="small text-muted align-self-center">(*) Sau khi lưu sẽ chuyển sang tab đơn thuốc.</div>
-                    </div>
-                    <div class="d-flex gap-2">
-                      <button id="previewTechniqueBtn" type="button" class="btn btn-outline-primary">Xem trước phiếu</button>
-                      <button class="btn btn-success" type="submit">Tiếp tục →</button>
+                      <button id="techniqueSubmitBtn" class="btn btn-success" type="submit">Tiếp tục →</button>
                     </div>
                   </div>
                 </form>
@@ -340,33 +335,52 @@
 
         <!-- Summary -->
         <div class="col-12">
-          <h6 class="text-primary">Chi phí tổng hợp</h6>
-        </div>
-
-        <div class="col-12">
-          <table class="table table-bordered align-middle">
+          <h6 class="text-primary">Chi tiết thuốc</h6>
+          <table class="table table-bordered">
             <thead>
               <tr>
-                <th>Loại</th>
-                <th>Mô tả</th>
-                <th class="text-end">Đơn giá (VNĐ)</th>
+                <th>Tên thuốc</th>
+                <th>Số lượng</th>
+                <th>Đơn giá</th>
+                <th>Thành tiền</th>
               </tr>
             </thead>
-            <tbody id="invoiceSummaryBody">
-              <!-- Auto-filled by JS -->
-            </tbody>
+            <tbody id="invoiceMedicinesTableBody"></tbody>
             <tfoot>
               <tr>
-                <th colspan="2" class="text-end">Tổng cộng:</th>
-                <th class="text-end" id="invoiceTotal">0</th>
+                <th colspan="3" class="text-end">Tổng tiền thuốc:</th>
+                <th id="totalMedicines">0 đ</th>
               </tr>
             </tfoot>
           </table>
         </div>
 
+        <div class="col-12">
+          <h6 class="text-primary">Chi tiết kỹ thuật</h6>
+          <table class="table table-bordered">
+            <thead>
+              <tr>
+                <th>Tên kỹ thuật</th>
+                <th>Đơn giá</th>
+              </tr>
+            </thead>
+            <tbody id="invoiceTechniquesTableBody"></tbody>
+            <tfoot>
+              <tr>
+                <th class="text-end">Tổng tiền kỹ thuật:</th>
+                <th id="totalTechniques">0 đ</th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div class="col-12">
+          <h5 class="text-end">Tổng cộng: <span id="grandTotal" class="text-success">0 đ</span></h5>
+        </div>
+
         <div class="col-12 d-flex justify-content-between">
           <button type="button" id="resetInvoiceBtn" class="btn btn-outline-secondary btn-sm">
-            🔄 Bệnh nhân mới
+             Bệnh nhân mới
           </button>
 
           <div>
@@ -388,58 +402,30 @@
     </div>
   </main>
 
-  <!-- MODAL: Đăng nhập -->
-  <div class="modal fade" id="loginModal" tabindex="-1">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <form id="loginForm">
-          <div class="modal-header">
-            <h5 class="modal-title">Đăng nhập hệ thống</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label class="form-label">Tên đăng nhập</label>
-              <input id="loginUsername" class="form-control" required autocomplete="username">
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Mật khẩu</label>
-              <input id="loginPassword" type="password" class="form-control" required autocomplete="current-password">
-            </div>
-            <div id="loginError" class="alert alert-danger d-none" role="alert"></div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-primary" type="submit">Đăng nhập</button>
-            <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Hủy</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
   <!-- MODAL: Thêm / Sửa bệnh nhân -->
-  <div class="modal fade" id="patientModal" tabindex="-1">
+  <div class="modal fade" id="patientFormModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
-        <form id="patientFormModal">
+        <form id="patientForm">
           <div class="modal-header">
-            <h5 class="modal-title" id="patientModalTitle">Thêm bệnh nhân</h5>
+            <h5 class="modal-title" id="patientModalLabel">Thêm bệnh nhân</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
+            <input type="hidden" id="patientId">
             <div class="row g-3">
-              <div class="col-md-6"><label>Họ tên *</label><input id="modalFullName" class="form-control" required></div>
-              <div class="col-md-3"><label>Ngày sinh *</label><input id="modalDob" type="date" class="form-control" required></div>
+              <div class="col-md-6"><label>Họ tên *</label><input id="patientName" class="form-control" required></div>
+              <div class="col-md-3"><label>Ngày sinh *</label><input id="patientDOB" type="date" class="form-control" required></div>
               <div class="col-md-3"><label>Giới tính</label>
-                <select id="modalGender" class="form-select">
+                <select id="patientGender" class="form-select">
                   <option value="Nam">Nam</option>
                   <option value="Nữ">Nữ</option>
                 </select>
               </div>
-              <div class="col-md-6"><label>Số CCCD</label><input id="modalCccd" class="form-control" placeholder="12 số"></div>
-              <div class="col-md-6"><label>Số BHYT</label><input id="modalBhyt" class="form-control"></div>
-              <div class="col-md-6"><label>Địa chỉ</label><input id="modalAddress" class="form-control"></div>
-              <div class="col-md-6"><label>Số điện thoại</label><input id="modalPhone" class="form-control"></div>
+              <div class="col-md-6"><label>Số CCCD</label><input id="patientCCCD" class="form-control" placeholder="12 số"></div>
+              <div class="col-md-6"><label>Số BHYT</label><input id="patientBHYT" class="form-control"></div>
+              <div class="col-md-6"><label>Địa chỉ</label><input id="patientAddress" class="form-control"></div>
+              <div class="col-md-6"><label>Số điện thoại</label><input id="patientPhone" class="form-control"></div>
             </div>
           </div>
           <div class="modal-footer">
@@ -550,11 +536,56 @@
   </div>
 </div>
 
+  <!-- Login Modal -->
+  <div class="modal fade" id="loginModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Đăng nhập hệ thống</h5>
+        </div>
+        <div class="modal-body">
+          <form id="loginForm">
+            <div class="mb-3">
+              <label for="loginUsername" class="form-label">Tên đăng nhập</label>
+              <input type="text" class="form-control" id="loginUsername" required autofocus>
+            </div>
+            <div class="mb-3">
+              <label for="loginPassword" class="form-label">Mật khẩu</label>
+              <input type="password" class="form-control" id="loginPassword" required>
+            </div>
+            <div class="text-muted small">
+              <p class="mb-1">Tài khoản demo:</p>
+              <ul class="mb-0">
+                <li>admin / 123456</li>
+                <li>bacsi1 / 123456</li>
+              </ul>
+            </div>
+            <div class="d-grid mt-3">
+              <button type="submit" class="btn btn-primary">Đăng nhập</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast (notification) -->
   <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
     <div id="appToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
       <div class="d-flex">
         <div class="toast-body" id="appToastBody">Đã lưu.</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="appToast" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body" id="appToastBody">
+          Thông báo
+        </div>
         <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
       </div>
     </div>

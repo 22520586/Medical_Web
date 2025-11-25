@@ -16,12 +16,25 @@ let selectedTechs = [];
 function checkAuth() {
     const user = localStorage.getItem("currentUser");
     if (!user) {
-        const loginModal = new bootstrap.Modal(document.getElementById("loginModal"));
-        loginModal.show();
+        // Show login button, hide user info
+        const loginBtn = document.getElementById("loginBtn");
+        const userInfo = document.getElementById("userInfo");
+        if (loginBtn) loginBtn.classList.remove("d-none");
+        if (userInfo) userInfo.classList.add("d-none");
         return false;
     }
+    
     const userData = JSON.parse(user);
-    document.getElementById("currentUserDisplay").textContent = `Xin chào, ${userData.HoTen}`;
+    
+    // Hide login button, show user info
+    const loginBtn = document.getElementById("loginBtn");
+    const userInfo = document.getElementById("userInfo");
+    const userDisplayName = document.getElementById("userDisplayName");
+    
+    if (loginBtn) loginBtn.classList.add("d-none");
+    if (userInfo) userInfo.classList.remove("d-none");
+    if (userDisplayName) userDisplayName.textContent = userData.HoTen;
+    
     return true;
 }
 
@@ -31,6 +44,12 @@ function logout() {
 }
 
 document.getElementById("logoutBtn")?.addEventListener("click", logout);
+
+// Show login modal when clicking login button
+document.getElementById("loginBtn")?.addEventListener("click", () => {
+    const loginModal = new bootstrap.Modal(document.getElementById("loginModal"));
+    loginModal.show();
+});
 
 // =======================
 // LOGIN FORM
@@ -54,11 +73,11 @@ document.getElementById("loginForm")?.addEventListener("submit", async (e) => {
             window.location.reload();
         } else {
             const error = await res.json();
-            alert(error.error || "Đăng nhập thất bại");
+            showToast(error.error || "Đăng nhập thất bại", 'error');
         }
     } catch (err) {
         console.error(err);
-        alert("Lỗi kết nối");
+        showToast("Lỗi kết nối", 'error');
     }
 });
 
@@ -67,6 +86,31 @@ document.getElementById("loginForm")?.addEventListener("submit", async (e) => {
 // =======================
 function formatCurrency(amount) {
     return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount);
+}
+
+function showToast(message, type = 'success') {
+    const toastEl = document.getElementById('appToast');
+    const toastBody = document.getElementById('appToastBody');
+    if (!toastEl || !toastBody) return;
+    
+    // Set message
+    toastBody.textContent = message;
+    
+    // Set color based on type
+    toastEl.className = `toast align-items-center border-0`;
+    if (type === 'success') {
+        toastEl.classList.add('text-bg-success');
+    } else if (type === 'error') {
+        toastEl.classList.add('text-bg-danger');
+    } else if (type === 'warning') {
+        toastEl.classList.add('text-bg-warning');
+    } else {
+        toastEl.classList.add('text-bg-info');
+    }
+    
+    // Show toast
+    const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+    toast.show();
 }
 
 // =======================
@@ -132,13 +176,20 @@ function setupAutocomplete(inputId, apiUrl, options = {}) {
 
     input.addEventListener("keydown", (e) => {
         const items = resultsDiv.querySelectorAll(".autocomplete-item");
-        if (items.length === 0) return;
-
+        
         if (e.key === "ArrowDown") {
+            // Only handle if there are autocomplete items to navigate
+            if (items.length === 0) {
+                // Let other handlers deal with empty input
+                return;
+            }
+            
+            // Navigate through autocomplete items
             e.preventDefault();
             selectedIndex = (selectedIndex + 1) % items.length;
             updateSelection(items);
         } else if (e.key === "ArrowUp") {
+            if (items.length === 0) return;
             e.preventDefault();
             selectedIndex = selectedIndex <= 0 ? items.length - 1 : selectedIndex - 1;
             updateSelection(items);
@@ -193,11 +244,34 @@ setupAutocomplete("searchPatientDiagnosis", `${API_BASE}/patients/search`, {
         document.getElementById("patientAddressDiagnosis").textContent = patient.address || "";
         document.getElementById("patientPhoneDiagnosis").textContent = patient.phone || "";
         document.getElementById("infoSectionDiagnosis").classList.remove("d-none");
+        document.getElementById("searchPatientDiagnosis").classList.add("d-none");
         
-        // Sync to Technique tab
-        autoFillTechniqueTab(patient);
-        // Sync to Prescription tab
-        autoFillPrescriptionTab(patient);
+        // Sync to Technique tab - always sync
+        document.getElementById("patientIdTechnique").value = patient.id;
+        document.getElementById("patientNameTechnique").textContent = patient.name;
+        document.getElementById("patientDOBTechnique").textContent = patient.dob;
+        document.getElementById("patientGenderTechnique").textContent = patient.gender;
+        document.getElementById("patientAddressTechnique").textContent = patient.address || "";
+        document.getElementById("patientPhoneTechnique").textContent = patient.phone || "";
+        document.getElementById("infoSectionTechnique").classList.remove("d-none");
+        document.getElementById("searchPatientTechnique").classList.add("d-none");
+        
+        // Sync to Prescription tab - always sync
+        document.getElementById("patientIdForRx").value = patient.id;
+        document.getElementById("patientNameForRx").textContent = patient.name;
+        document.getElementById("patientDOBForRx").textContent = patient.dob;
+        document.getElementById("patientGenderForRx").textContent = patient.gender;
+        document.getElementById("patientAddressForRx").textContent = patient.address || "";
+        document.getElementById("patientPhoneForRx").textContent = patient.phone || "";
+        document.getElementById("infoSectionForRx").classList.remove("d-none");
+        document.getElementById("searchPatientForRx").classList.add("d-none");
+        
+        // Sync to Invoice tab - always sync
+        document.getElementById("invoicePatientNameDisplay").textContent = patient.name;
+        document.getElementById("invoicePatientInfoDisplay").innerHTML = 
+            `${patient.dob} - ${patient.gender}<br>${patient.address || ''} - ${patient.phone || ''}`;
+        document.getElementById("invoicePatientDisplay").classList.remove("d-none");
+        document.getElementById("invoicePatientSearch").classList.add("d-none");
         
         loadVisitsForPatient(patient.id, "visitSelectDiagnosis");
     }
@@ -214,19 +288,34 @@ setupAutocomplete("searchPatientTechnique", `${API_BASE}/patients/search`, {
         document.getElementById("patientAddressTechnique").textContent = patient.address || "";
         document.getElementById("patientPhoneTechnique").textContent = patient.phone || "";
         document.getElementById("infoSectionTechnique").classList.remove("d-none");
+        document.getElementById("searchPatientTechnique").classList.add("d-none");
         
-        // Sync to Diagnosis tab
-        if (!document.getElementById("patientIdDiagnosis").value) {
-            document.getElementById("patientIdDiagnosis").value = patient.id;
-            document.getElementById("patientNameDiagnosis").textContent = patient.name;
-            document.getElementById("patientDOBDiagnosis").textContent = patient.dob;
-            document.getElementById("patientGenderDiagnosis").textContent = patient.gender;
-            document.getElementById("patientAddressDiagnosis").textContent = patient.address || "";
-            document.getElementById("patientPhoneDiagnosis").textContent = patient.phone || "";
-            document.getElementById("infoSectionDiagnosis").classList.remove("d-none");
-        }
-        // Sync to Prescription tab
-        autoFillPrescriptionTab(patient);
+        // Sync to Diagnosis tab - always sync
+        document.getElementById("patientIdDiagnosis").value = patient.id;
+        document.getElementById("patientNameDiagnosis").textContent = patient.name;
+        document.getElementById("patientDOBDiagnosis").textContent = patient.dob;
+        document.getElementById("patientGenderDiagnosis").textContent = patient.gender;
+        document.getElementById("patientAddressDiagnosis").textContent = patient.address || "";
+        document.getElementById("patientPhoneDiagnosis").textContent = patient.phone || "";
+        document.getElementById("infoSectionDiagnosis").classList.remove("d-none");
+        document.getElementById("searchPatientDiagnosis").classList.add("d-none");
+        
+        // Sync to Prescription tab - always sync
+        document.getElementById("patientIdForRx").value = patient.id;
+        document.getElementById("patientNameForRx").textContent = patient.name;
+        document.getElementById("patientDOBForRx").textContent = patient.dob;
+        document.getElementById("patientGenderForRx").textContent = patient.gender;
+        document.getElementById("patientAddressForRx").textContent = patient.address || "";
+        document.getElementById("patientPhoneForRx").textContent = patient.phone || "";
+        document.getElementById("infoSectionForRx").classList.remove("d-none");
+        document.getElementById("searchPatientForRx").classList.add("d-none");
+        
+        // Sync to Invoice tab - always sync
+        document.getElementById("invoicePatientNameDisplay").textContent = patient.name;
+        document.getElementById("invoicePatientInfoDisplay").innerHTML = 
+            `${patient.dob} - ${patient.gender}<br>${patient.address || ''} - ${patient.phone || ''}`;
+        document.getElementById("invoicePatientDisplay").classList.remove("d-none");
+        document.getElementById("invoicePatientSearch").classList.add("d-none");
         
         loadVisitsForPatient(patient.id, "visitSelectTechnique");
     }
@@ -243,39 +332,120 @@ setupAutocomplete("searchPatientForRx", `${API_BASE}/patients/search`, {
         document.getElementById("patientAddressForRx").textContent = patient.address || "";
         document.getElementById("patientPhoneForRx").textContent = patient.phone || "";
         document.getElementById("infoSectionForRx").classList.remove("d-none");
+        document.getElementById("searchPatientForRx").classList.add("d-none");
         
-        // Sync to Diagnosis tab
-        if (!document.getElementById("patientIdDiagnosis").value) {
-            document.getElementById("patientIdDiagnosis").value = patient.id;
-            document.getElementById("patientNameDiagnosis").textContent = patient.name;
-            document.getElementById("patientDOBDiagnosis").textContent = patient.dob;
-            document.getElementById("patientGenderDiagnosis").textContent = patient.gender;
-            document.getElementById("patientAddressDiagnosis").textContent = patient.address || "";
-            document.getElementById("patientPhoneDiagnosis").textContent = patient.phone || "";
-            document.getElementById("infoSectionDiagnosis").classList.remove("d-none");
-        }
-        // Sync to Technique tab
-        autoFillTechniqueTab(patient);
+        // Sync to Diagnosis tab - always sync
+        document.getElementById("patientIdDiagnosis").value = patient.id;
+        document.getElementById("patientNameDiagnosis").textContent = patient.name;
+        document.getElementById("patientDOBDiagnosis").textContent = patient.dob;
+        document.getElementById("patientGenderDiagnosis").textContent = patient.gender;
+        document.getElementById("patientAddressDiagnosis").textContent = patient.address || "";
+        document.getElementById("patientPhoneDiagnosis").textContent = patient.phone || "";
+        document.getElementById("infoSectionDiagnosis").classList.remove("d-none");
+        document.getElementById("searchPatientDiagnosis").classList.add("d-none");
+        
+        // Sync to Technique tab - always sync
+        document.getElementById("patientIdTechnique").value = patient.id;
+        document.getElementById("patientNameTechnique").textContent = patient.name;
+        document.getElementById("patientDOBTechnique").textContent = patient.dob;
+        document.getElementById("patientGenderTechnique").textContent = patient.gender;
+        document.getElementById("patientAddressTechnique").textContent = patient.address || "";
+        document.getElementById("patientPhoneTechnique").textContent = patient.phone || "";
+        document.getElementById("infoSectionTechnique").classList.remove("d-none");
+        document.getElementById("searchPatientTechnique").classList.add("d-none");
+        
+        // Sync to Invoice tab - always sync
+        document.getElementById("invoicePatientNameDisplay").textContent = patient.name;
+        document.getElementById("invoicePatientInfoDisplay").innerHTML = 
+            `${patient.dob} - ${patient.gender}<br>${patient.address || ''} - ${patient.phone || ''}`;
+        document.getElementById("invoicePatientDisplay").classList.remove("d-none");
+        document.getElementById("invoicePatientSearch").classList.add("d-none");
         
         loadVisitsForPatient(patient.id, "visitSelectForRx");
     }
 });
 
-// 4. THUỐC - Autocomplete
-setupAutocomplete("searchMedicine", `${API_BASE}/thuoc/search`, {
-    onSelect: (medicine) => {
-        selectedMedicines.push({ id: medicine.id, name: medicine.name, price: medicine.price, quantity: 1 });
-        renderSelectedMedicines();
-        document.getElementById("searchMedicine").value = "";
+// 4. TAB BỆNH NHÂN - Autocomplete tìm kiếm và lọc table
+setupAutocomplete("searchPatientMain", `${API_BASE}/patients/search`, {
+    onSelect: (patient) => {
+        // Sau khi chọn, lọc table chỉ hiển thị bệnh nhân đó
+        renderPatients(patient.name);
+        document.getElementById("searchPatientMain").value = patient.name;
     }
 });
 
-// 5. KỸ THUẬT - Autocomplete
+// Thêm event listener để tìm kiếm realtime khi gõ
+document.getElementById("searchPatientMain")?.addEventListener("input", (e) => {
+    const query = e.target.value.trim();
+    renderPatients(query);
+});
+
+// 5. THUỐC - Autocomplete
+setupAutocomplete("searchMedicine", `${API_BASE}/thuoc/search`, {
+    submitButtonId: "prescriptionSubmitBtn",
+    onSelect: (medicine) => {
+        selectedMedicines.push({ id: medicine.id, name: medicine.name, price: medicine.price, quantity: 1 });
+        renderSelectedMedicines();
+        const searchInput = document.getElementById("searchMedicine");
+        searchInput.value = "";
+        searchInput.focus();
+    }
+});
+
+// 6. KỸ THUẬT - Autocomplete
 setupAutocomplete("searchTechnique", `${API_BASE}/kythuat/search`, {
+    submitButtonId: "techniqueSubmitBtn",
     onSelect: (tech) => {
         selectedTechs.push({ id: tech.id, name: tech.name, price: tech.price || 0 });
         renderSelectedTechs();
-        document.getElementById("searchTechnique").value = "";
+        const searchInput = document.getElementById("searchTechnique");
+        searchInput.value = "";
+        searchInput.focus();
+    }
+});
+
+// 7. HÓA ĐƠN TAB - Autocomplete bệnh nhân với sync
+setupAutocomplete("searchPatientInvoice", `${API_BASE}/patients/search`, {
+    onSelect: (patient) => {
+        currentWorkflowPatient = patient;
+        
+        // Update invoice display
+        document.getElementById("invoicePatientNameDisplay").textContent = patient.name;
+        document.getElementById("invoicePatientInfoDisplay").innerHTML = 
+            `${patient.dob} - ${patient.gender}<br>${patient.address || ''} - ${patient.phone || ''}`;
+        document.getElementById("invoicePatientDisplay").classList.remove("d-none");
+        document.getElementById("invoicePatientSearch").classList.add("d-none");
+        
+        // Sync to all other tabs - always sync
+        document.getElementById("patientIdDiagnosis").value = patient.id;
+        document.getElementById("patientNameDiagnosis").textContent = patient.name;
+        document.getElementById("patientDOBDiagnosis").textContent = patient.dob;
+        document.getElementById("patientGenderDiagnosis").textContent = patient.gender;
+        document.getElementById("patientAddressDiagnosis").textContent = patient.address || "";
+        document.getElementById("patientPhoneDiagnosis").textContent = patient.phone || "";
+        document.getElementById("infoSectionDiagnosis").classList.remove("d-none");
+        document.getElementById("searchPatientDiagnosis").classList.add("d-none");
+        
+        document.getElementById("patientIdTechnique").value = patient.id;
+        document.getElementById("patientNameTechnique").textContent = patient.name;
+        document.getElementById("patientDOBTechnique").textContent = patient.dob;
+        document.getElementById("patientGenderTechnique").textContent = patient.gender;
+        document.getElementById("patientAddressTechnique").textContent = patient.address || "";
+        document.getElementById("patientPhoneTechnique").textContent = patient.phone || "";
+        document.getElementById("infoSectionTechnique").classList.remove("d-none");
+        document.getElementById("searchPatientTechnique").classList.add("d-none");
+        
+        document.getElementById("patientIdForRx").value = patient.id;
+        document.getElementById("patientNameForRx").textContent = patient.name;
+        document.getElementById("patientDOBForRx").textContent = patient.dob;
+        document.getElementById("patientGenderForRx").textContent = patient.gender;
+        document.getElementById("patientAddressForRx").textContent = patient.address || "";
+        document.getElementById("patientPhoneForRx").textContent = patient.phone || "";
+        document.getElementById("infoSectionForRx").classList.remove("d-none");
+        document.getElementById("searchPatientForRx").classList.add("d-none");
+        
+        // Load visits for invoice
+        loadVisitsForPatient(patient.id, "invoiceVisitSelect");
     }
 });
 
@@ -283,21 +453,42 @@ setupAutocomplete("searchTechnique", `${API_BASE}/kythuat/search`, {
 // CHANGE PATIENT BUTTONS
 // =======================
 document.getElementById("changeDiagnosisPatient")?.addEventListener("click", () => {
+    // Only hide patient info and show search, keep form data
     document.getElementById("infoSectionDiagnosis").classList.add("d-none");
-    document.getElementById("searchPatientDiagnosis").value = "";
-    document.getElementById("searchPatientDiagnosis").focus();
+    const searchInput = document.getElementById("searchPatientDiagnosis");
+    searchInput.value = "";
+    searchInput.classList.remove("d-none");
+    searchInput.focus();
+    // Note: Keep diagnosis form fields intact
 });
 
 document.getElementById("changeRxPatient")?.addEventListener("click", () => {
+    // Only hide patient info and show search, keep selected medicines
     document.getElementById("infoSectionForRx").classList.add("d-none");
-    document.getElementById("searchPatientForRx").value = "";
-    document.getElementById("searchPatientForRx").focus();
+    const searchInput = document.getElementById("searchPatientForRx");
+    searchInput.value = "";
+    searchInput.classList.remove("d-none");
+    searchInput.focus();
+    // Note: Keep selectedMedicines array and display intact
 });
 
 document.getElementById("changeTechPatient")?.addEventListener("click", () => {
+    // Only hide patient info and show search, keep selected techniques
     document.getElementById("infoSectionTechnique").classList.add("d-none");
-    document.getElementById("searchPatientTechnique").value = "";
-    document.getElementById("searchPatientTechnique").focus();
+    const searchInput = document.getElementById("searchPatientTechnique");
+    searchInput.value = "";
+    searchInput.classList.remove("d-none");
+    searchInput.focus();
+    // Note: Keep selectedTechs array and display intact
+});
+
+document.getElementById("changeInvoicePatient")?.addEventListener("click", () => {
+    // Only hide patient info and show search in invoice tab
+    document.getElementById("invoicePatientDisplay").classList.add("d-none");
+    const searchInput = document.getElementById("searchPatientInvoice");
+    searchInput.value = "";
+    document.getElementById("invoicePatientSearch").classList.remove("d-none");
+    searchInput.focus();
 });
 
 // =======================
@@ -330,6 +521,7 @@ document.getElementById("resetTechFormBtn")?.addEventListener("click", () => {
 // =======================
 function renderSelectedMedicines() {
     const div = document.getElementById("selectedMedicinesDiv");
+    if (!div) return;
     if (selectedMedicines.length === 0) {
         div.innerHTML = "<p class='text-muted'>Chưa có thuốc nào</p>";
         return;
@@ -354,6 +546,7 @@ function renderSelectedMedicines() {
 
 function renderSelectedTechs() {
     const div = document.getElementById("selectedTechsDiv");
+    if (!div) return;
     if (selectedTechs.length === 0) {
         div.innerHTML = "<p class='text-muted'>Chưa có kỹ thuật nào</p>";
         return;
@@ -373,13 +566,14 @@ function renderSelectedTechs() {
 // =======================
 // PATIENTS TAB - CRUD
 // =======================
-async function renderPatients() {
+async function renderPatients(searchQuery = "") {
     try {
-        const res = await fetch(`${API_BASE}/patients/search?q=`);
+        const res = await fetch(`${API_BASE}/patients/search?q=${encodeURIComponent(searchQuery)}`);
         const patients = await res.json();
         const tbody = document.getElementById("patientsTableBody");
+        if (!tbody) return;
         if (patients.length === 0) {
-            tbody.innerHTML = "<tr><td colspan='7' class='text-center'>Không có dữ liệu</td></tr>";
+            tbody.innerHTML = "<tr><td colspan='9' class='text-center'>Không có dữ liệu</td></tr>";
             return;
         }
         tbody.innerHTML = patients.map(p => `
@@ -398,7 +592,7 @@ async function renderPatients() {
         `).join("");
     } catch (err) {
         console.error(err);
-        alert("Lỗi tải danh sách bệnh nhân");
+        showToast("Lỗi tải danh sách bệnh nhân", 'error');
     }
 }
 
@@ -407,6 +601,7 @@ async function loadVisitsForPatient(patientId, selectElementId) {
         const res = await fetch(`${API_BASE}/visits/${patientId}`);
         const visits = await res.json();
         const select = document.getElementById(selectElementId);
+        if (!select) return;
         select.innerHTML = "<option value=''>-- Chọn lần khám --</option>";
         visits.forEach(v => {
             const opt = document.createElement("option");
@@ -421,24 +616,91 @@ async function loadVisitsForPatient(patientId, selectElementId) {
 
 document.getElementById("visitSelectDiagnosis")?.addEventListener("change", (e) => {
     const visitId = e.target.value;
-    if (visitId) currentWorkflowVisit = visitId;
+    if (visitId) {
+        currentWorkflowVisit = visitId;
+        // Sync to other tabs
+        const techSelect = document.getElementById("visitSelectTechnique");
+        const rxSelect = document.getElementById("visitSelectForRx");
+        const invoiceSelect = document.getElementById("invoiceVisitSelect");
+        if (techSelect && techSelect.querySelector(`option[value="${visitId}"]`)) {
+            techSelect.value = visitId;
+        }
+        if (rxSelect && rxSelect.querySelector(`option[value="${visitId}"]`)) {
+            rxSelect.value = visitId;
+        }
+        if (invoiceSelect && invoiceSelect.querySelector(`option[value="${visitId}"]`)) {
+            invoiceSelect.value = visitId;
+        }
+    }
 });
 
 document.getElementById("visitSelectTechnique")?.addEventListener("change", (e) => {
     const visitId = e.target.value;
-    if (visitId) currentWorkflowVisit = visitId;
+    if (visitId) {
+        currentWorkflowVisit = visitId;
+        // Sync to other tabs
+        const diagSelect = document.getElementById("visitSelectDiagnosis");
+        const rxSelect = document.getElementById("visitSelectForRx");
+        const invoiceSelect = document.getElementById("invoiceVisitSelect");
+        if (diagSelect && diagSelect.querySelector(`option[value="${visitId}"]`)) {
+            diagSelect.value = visitId;
+        }
+        if (rxSelect && rxSelect.querySelector(`option[value="${visitId}"]`)) {
+            rxSelect.value = visitId;
+        }
+        if (invoiceSelect && invoiceSelect.querySelector(`option[value="${visitId}"]`)) {
+            invoiceSelect.value = visitId;
+        }
+    }
 });
 
 document.getElementById("visitSelectForRx")?.addEventListener("change", (e) => {
     const visitId = e.target.value;
-    if (visitId) currentWorkflowVisit = visitId;
+    if (visitId) {
+        currentWorkflowVisit = visitId;
+        // Sync to other tabs
+        const diagSelect = document.getElementById("visitSelectDiagnosis");
+        const techSelect = document.getElementById("visitSelectTechnique");
+        const invoiceSelect = document.getElementById("invoiceVisitSelect");
+        if (diagSelect && diagSelect.querySelector(`option[value="${visitId}"]`)) {
+            diagSelect.value = visitId;
+        }
+        if (techSelect && techSelect.querySelector(`option[value="${visitId}"]`)) {
+            techSelect.value = visitId;
+        }
+        if (invoiceSelect && invoiceSelect.querySelector(`option[value="${visitId}"]`)) {
+            invoiceSelect.value = visitId;
+        }
+    }
+});
+
+document.getElementById("invoiceVisitSelect")?.addEventListener("change", (e) => {
+    const visitId = e.target.value;
+    if (visitId) {
+        currentWorkflowVisit = visitId;
+        // Sync to other tabs
+        const diagSelect = document.getElementById("visitSelectDiagnosis");
+        const techSelect = document.getElementById("visitSelectTechnique");
+        const rxSelect = document.getElementById("visitSelectForRx");
+        if (diagSelect && diagSelect.querySelector(`option[value="${visitId}"]`)) {
+            diagSelect.value = visitId;
+        }
+        if (techSelect && techSelect.querySelector(`option[value="${visitId}"]`)) {
+            techSelect.value = visitId;
+        }
+        if (rxSelect && rxSelect.querySelector(`option[value="${visitId}"]`)) {
+            rxSelect.value = visitId;
+        }
+        // Auto-load invoice data
+        loadInvoice(visitId);
+    }
 });
 
 function editPatient(patient) {
     document.getElementById("patientModalLabel").textContent = "Sửa thông tin bệnh nhân";
     document.getElementById("patientId").value = patient.id;
     document.getElementById("patientName").value = patient.name;
-    document.getElementById("patientDOB").value = patient.dob;
+    document.getElementById("patientDOB").value = patient.dob || "";
     document.getElementById("patientGender").value = patient.gender;
     document.getElementById("patientAddress").value = patient.address || "";
     document.getElementById("patientPhone").value = patient.phone || "";
@@ -453,14 +715,14 @@ async function deletePatient(id) {
         const res = await fetch(`${API_BASE}/patient/${id}`, { method: "DELETE" });
         const data = await res.json();
         if (data.success) {
-            alert("Đã xóa");
+            showToast("Đã xóa bệnh nhân thành công", 'success');
             renderPatients();
         } else {
-            alert("Lỗi xóa");
+            showToast("Lỗi xóa bệnh nhân", 'error');
         }
     } catch (err) {
         console.error(err);
-        alert("Lỗi xóa bệnh nhân");
+        showToast("Lỗi xóa bệnh nhân", 'error');
     }
 }
 
@@ -504,15 +766,15 @@ document.getElementById("patientForm")?.addEventListener("submit", async (e) => 
         }
         const data = await res.json();
         if (data.success || data.id) {
-            alert(id ? "Đã cập nhật" : "Đã thêm");
+            showToast(id ? "Đã cập nhật bệnh nhân" : "Đã thêm bệnh nhân mới", 'success');
             bootstrap.Modal.getInstance(document.getElementById("patientFormModal")).hide();
             renderPatients();
         } else {
-            alert("Lỗi lưu");
+            showToast("Lỗi lưu thông tin bệnh nhân", 'error');
         }
     } catch (err) {
         console.error(err);
-        alert("Lỗi kết nối");
+        showToast("Lỗi kết nối", 'error');
     }
 });
 
@@ -523,7 +785,7 @@ document.getElementById("diagnosisForm")?.addEventListener("submit", async (e) =
     e.preventDefault();
     const patientId = document.getElementById("patientIdDiagnosis").value;
     if (!patientId) {
-        alert("Vui lòng chọn bệnh nhân");
+        showToast("Vui lòng chọn bệnh nhân", 'warning');
         return;
     }
 
@@ -549,17 +811,26 @@ document.getElementById("diagnosisForm")?.addEventListener("submit", async (e) =
         const data = await res.json();
         if (data.visitId) {
             currentWorkflowVisit = data.visitId;
-            alert("Lưu phiếu khám thành công");
+            showToast("Lưu phiếu khám thành công", 'success');
+            
+            // Load visits and auto-select the new one in Technique tab
+            await loadVisitsForPatient(patientId, "visitSelectTechnique");
+            document.getElementById("visitSelectTechnique").value = data.visitId;
             
             // Auto-switch to Technique tab
             const techTab = new bootstrap.Tab(document.getElementById("techniques-tab"));
             techTab.show();
+            
+            // Auto-focus on technique search input
+            setTimeout(() => {
+                document.getElementById("searchTechnique")?.focus();
+            }, 100);
         } else {
-            alert("Lỗi lưu phiếu khám");
+            showToast("Lỗi lưu phiếu khám", 'error');
         }
     } catch (err) {
         console.error(err);
-        alert("Lỗi kết nối");
+        showToast("Lỗi kết nối", 'error');
     }
 });
 
@@ -571,7 +842,7 @@ document.getElementById("techniqueForm")?.addEventListener("submit", async (e) =
     
     const patientId = document.getElementById("patientIdTechnique").value;
     if (!patientId) {
-        alert("Vui lòng chọn bệnh nhân");
+        showToast("Vui lòng chọn bệnh nhân", 'warning');
         return;
     }
 
@@ -584,7 +855,7 @@ document.getElementById("techniqueForm")?.addEventListener("submit", async (e) =
 
     let visitId = currentWorkflowVisit || document.getElementById("visitSelectTechnique").value;
     if (!visitId) {
-        alert("Vui lòng chọn lần khám hoặc tạo phiếu khám trước");
+        showToast("Vui lòng chọn lần khám hoặc tạo phiếu khám trước", 'warning');
         return;
     }
 
@@ -596,17 +867,26 @@ document.getElementById("techniqueForm")?.addEventListener("submit", async (e) =
         });
         const data = await res.json();
         if (data.success) {
-            alert("Lưu chỉ định kỹ thuật thành công");
+            showToast("Lưu chỉ định kỹ thuật thành công", 'success');
+            
+            // Load visits and auto-select in Prescription tab
+            await loadVisitsForPatient(patientId, "visitSelectForRx");
+            document.getElementById("visitSelectForRx").value = visitId;
             
             // Auto-switch to Prescription tab
             const rxTab = new bootstrap.Tab(document.getElementById("prescription-tab"));
             rxTab.show();
+            
+            // Auto-focus on medicine search input
+            setTimeout(() => {
+                document.getElementById("searchMedicine")?.focus();
+            }, 100);
         } else {
-            alert("Lỗi lưu chỉ định");
+            showToast("Lỗi lưu chỉ định kỹ thuật", 'error');
         }
     } catch (err) {
         console.error(err);
-        alert("Lỗi kết nối");
+        showToast("Lỗi kết nối", 'error');
     }
 });
 
@@ -618,19 +898,19 @@ document.getElementById("prescriptionForm")?.addEventListener("submit", async (e
     
     const patientId = document.getElementById("patientIdForRx").value;
     if (!patientId) {
-        alert("Vui lòng chọn bệnh nhân");
+        showToast("Vui lòng chọn bệnh nhân", 'warning');
         return;
     }
 
     // If no medicines selected, just show success message
     if (selectedMedicines.length === 0) {
-        alert("Không có thuốc nào được chọn");
+        showToast("Không có thuốc nào được chọn", 'warning');
         return;
     }
 
     let visitId = currentWorkflowVisit || document.getElementById("visitSelectForRx").value;
     if (!visitId) {
-        alert("Vui lòng chọn lần khám hoặc tạo phiếu khám trước");
+        showToast("Vui lòng chọn lần khám hoặc tạo phiếu khám trước", 'warning');
         return;
     }
 
@@ -642,58 +922,74 @@ document.getElementById("prescriptionForm")?.addEventListener("submit", async (e
         });
         const data = await res.json();
         if (data.total !== undefined) {
-            alert(`Lưu đơn thuốc thành công. Tổng tiền: ${formatCurrency(data.total)}`);
+            showToast(`Lưu đơn thuốc thành công. Tổng tiền: ${formatCurrency(data.total)}`, 'success');
             
             // Open Invoice tab with this visit
             openInvoiceTab(visitId);
         } else {
-            alert("Lỗi lưu đơn thuốc");
+            showToast("Lỗi lưu đơn thuốc", 'error');
         }
     } catch (err) {
         console.error(err);
-        alert("Lỗi kết nối");
+        showToast("Lỗi kết nối", 'error');
     }
 });
 
 // =======================
 // AUTO-FILL FUNCTIONS (with check to avoid overwrite)
 // =======================
-function autoFillPrescriptionTab(patient) {
+async function autoFillPrescriptionTab(patientId) {
     // Only fill if Prescription tab is empty
-    if (!document.getElementById("patientIdForRx").value) {
-        document.getElementById("patientIdForRx").value = patient.id;
-        document.getElementById("patientNameForRx").textContent = patient.name;
-        document.getElementById("patientDOBForRx").textContent = patient.dob;
-        document.getElementById("patientGenderForRx").textContent = patient.gender;
-        document.getElementById("patientAddressForRx").textContent = patient.address || "";
-        document.getElementById("patientPhoneForRx").textContent = patient.phone || "";
-        document.getElementById("infoSectionForRx").classList.remove("d-none");
+    const currentPatientId = document.getElementById("patientIdForRx").value;
+    if (!currentPatientId || currentPatientId !== patientId.toString()) {
+        // Get patient info from diagnosis tab if available
+        const patientName = document.getElementById("patientNameDiagnosis")?.textContent || "";
+        const patientDOB = document.getElementById("patientDOBDiagnosis")?.textContent || "";
+        const patientGender = document.getElementById("patientGenderDiagnosis")?.textContent || "";
+        const patientAddress = document.getElementById("patientAddressDiagnosis")?.textContent || "";
+        const patientPhone = document.getElementById("patientPhoneDiagnosis")?.textContent || "";
         
+        document.getElementById("patientIdForRx").value = patientId;
+        document.getElementById("patientNameForRx").textContent = patientName;
+        document.getElementById("patientDOBForRx").textContent = patientDOB;
+        document.getElementById("patientGenderForRx").textContent = patientGender;
+        document.getElementById("patientAddressForRx").textContent = patientAddress;
+        document.getElementById("patientPhoneForRx").textContent = patientPhone;
+        document.getElementById("infoSectionForRx").classList.remove("d-none");
+        document.getElementById("searchPatientForRx")?.classList.add("d-none");
+        
+        // Load visits and auto-select current workflow visit
         if (currentWorkflowVisit) {
-            loadVisitsForPatient(patient.id, "visitSelectForRx");
-            setTimeout(() => {
-                document.getElementById("visitSelectForRx").value = currentWorkflowVisit;
-            }, 100);
+            await loadVisitsForPatient(patientId, "visitSelectForRx");
+            document.getElementById("visitSelectForRx").value = currentWorkflowVisit;
         }
     }
 }
 
-function autoFillTechniqueTab(patient) {
+async function autoFillTechniqueTab(patientId) {
     // Only fill if Technique tab is empty
-    if (!document.getElementById("patientIdTechnique").value) {
-        document.getElementById("patientIdTechnique").value = patient.id;
-        document.getElementById("patientNameTechnique").textContent = patient.name;
-        document.getElementById("patientDOBTechnique").textContent = patient.dob;
-        document.getElementById("patientGenderTechnique").textContent = patient.gender;
-        document.getElementById("patientAddressTechnique").textContent = patient.address || "";
-        document.getElementById("patientPhoneTechnique").textContent = patient.phone || "";
-        document.getElementById("infoSectionTechnique").classList.remove("d-none");
+    const currentPatientId = document.getElementById("patientIdTechnique").value;
+    if (!currentPatientId || currentPatientId !== patientId.toString()) {
+        // Get patient info from diagnosis tab if available
+        const patientName = document.getElementById("patientNameDiagnosis")?.textContent || "";
+        const patientDOB = document.getElementById("patientDOBDiagnosis")?.textContent || "";
+        const patientGender = document.getElementById("patientGenderDiagnosis")?.textContent || "";
+        const patientAddress = document.getElementById("patientAddressDiagnosis")?.textContent || "";
+        const patientPhone = document.getElementById("patientPhoneDiagnosis")?.textContent || "";
         
+        document.getElementById("patientIdTechnique").value = patientId;
+        document.getElementById("patientNameTechnique").textContent = patientName;
+        document.getElementById("patientDOBTechnique").textContent = patientDOB;
+        document.getElementById("patientGenderTechnique").textContent = patientGender;
+        document.getElementById("patientAddressTechnique").textContent = patientAddress;
+        document.getElementById("patientPhoneTechnique").textContent = patientPhone;
+        document.getElementById("infoSectionTechnique").classList.remove("d-none");
+        document.getElementById("searchPatientTechnique")?.classList.add("d-none");
+        
+        // Load visits and auto-select current workflow visit
         if (currentWorkflowVisit) {
-            loadVisitsForPatient(patient.id, "visitSelectTechnique");
-            setTimeout(() => {
-                document.getElementById("visitSelectTechnique").value = currentWorkflowVisit;
-            }, 100);
+            await loadVisitsForPatient(patientId, "visitSelectTechnique");
+            document.getElementById("visitSelectTechnique").value = currentWorkflowVisit;
         }
     }
 }
@@ -727,13 +1023,14 @@ function setupGlobalKeyboardShortcuts() {
 function setupEnterToNextField() {
     const diagnosisFields = [
         "doctor",
-        "mainDiagnosis",
-        "subDiagnosis",
-        "symptoms",
         "temperature",
         "bloodPressure",
         "height",
-        "weight"
+        "weight",
+        "mainDiagnosis",
+        "subDiagnosis",
+        "symptoms",
+        "notes"
     ];
 
     diagnosisFields.forEach((fieldId, index) => {
@@ -741,7 +1038,12 @@ function setupEnterToNextField() {
         if (!field) return;
         
         field.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
+            // For textarea, only move on Enter without Shift (Shift+Enter for new line)
+            if (field.tagName === "TEXTAREA" && e.shiftKey) {
+                return; // Allow new line in textarea with Shift+Enter
+            }
+            
+            if (e.key === "Enter") {
                 e.preventDefault();
                 
                 if (index < diagnosisFields.length - 1) {
@@ -750,6 +1052,7 @@ function setupEnterToNextField() {
                         nextField.focus();
                     }
                 } else {
+                    // At last field, focus on submit button
                     document.querySelector("#diagnosisForm button[type='submit']")?.focus();
                 }
             }
@@ -777,13 +1080,13 @@ async function loadInvoice(visitId) {
     } else {
       let totalMedicines = 0;
       tbodyThuoc.innerHTML = medicines.map(m => {
-        const subtotal = m.SoLuong * m.DonGia;
+        const subtotal = m.quantity * m.price;
         totalMedicines += subtotal;
         return `
           <tr>
-            <td>${m.TenThuoc}</td>
-            <td>${m.SoLuong}</td>
-            <td>${formatCurrency(m.DonGia)}</td>
+            <td>${m.name}</td>
+            <td>${m.quantity}</td>
+            <td>${formatCurrency(m.price)}</td>
             <td>${formatCurrency(subtotal)}</td>
           </tr>
         `;
@@ -798,11 +1101,11 @@ async function loadInvoice(visitId) {
     } else {
       let totalTech = 0;
       tbodyTech.innerHTML = techniques.map(t => {
-        totalTech += t.DonGia || 0;
+        totalTech += t.price || 0;
         return `
           <tr>
-            <td>${t.TenKyThuat}</td>
-            <td>${formatCurrency(t.DonGia || 0)}</td>
+            <td>${t.name}</td>
+            <td>${formatCurrency(t.price || 0)}</td>
           </tr>
         `;
       }).join("");
@@ -810,14 +1113,14 @@ async function loadInvoice(visitId) {
     }
 
     // 5. Tính tổng tiền
-    const totalMedicines = medicines.reduce((sum, m) => sum + m.SoLuong * m.DonGia, 0);
-    const totalTech = techniques.reduce((sum, t) => sum + (t.DonGia || 0), 0);
+    const totalMedicines = medicines.reduce((sum, m) => sum + m.quantity * m.price, 0);
+    const totalTech = techniques.reduce((sum, t) => sum + (t.price || 0), 0);
     const grandTotal = totalMedicines + totalTech;
     document.getElementById("grandTotal").textContent = formatCurrency(grandTotal);
 
   } catch (err) {
     console.error("Lỗi tải hóa đơn:", err);
-    alert("Lỗi tải hóa đơn");
+    showToast("Lỗi tải hóa đơn", 'error');
   }
 }
 
@@ -841,4 +1144,48 @@ window.addEventListener("load", () => {
     renderPatients();
     renderSelectedMedicines();
     renderSelectedTechs();
+    
+    // Auto-fill doctor name from logged in user
+    const user = localStorage.getItem("currentUser");
+    if (user) {
+        const userData = JSON.parse(user);
+        const doctorField = document.getElementById("doctor");
+        if (doctorField) {
+            doctorField.value = userData.HoTen;
+        }
+    }
+    
+    // Hide all autocomplete results on load
+    document.querySelectorAll('.autocomplete-results').forEach(div => {
+        div.innerHTML = "";
+        div.classList.remove("show");
+    });
+    
+    // Add Enter handlers for technique and medicine search - focus submit button if empty
+    const searchTechnique = document.getElementById("searchTechnique");
+    const searchMedicine = document.getElementById("searchMedicine");
+    
+    if (searchTechnique) {
+        searchTechnique.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && e.target.value.trim() === "") {
+                e.preventDefault();
+                const btn = document.getElementById("techniqueSubmitBtn");
+                if (btn) {
+                    btn.focus();
+                }
+            }
+        });
+    }
+    
+    if (searchMedicine) {
+        searchMedicine.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && e.target.value.trim() === "") {
+                e.preventDefault();
+                const btn = document.getElementById("prescriptionSubmitBtn");
+                if (btn) {
+                    btn.focus();
+                }
+            }
+        });
+    }
 });
