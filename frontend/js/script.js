@@ -317,7 +317,11 @@ setupAutocomplete("searchPatientTechnique", `${API_BASE}/patients/search`, {
         document.getElementById("invoicePatientDisplay").classList.remove("d-none");
         document.getElementById("invoicePatientSearch").classList.add("d-none");
         
+        // Load visits for all tabs
         loadVisitsForPatient(patient.id, "visitSelectTechnique");
+        loadVisitsForPatient(patient.id, "visitSelectForRx");
+        loadVisitsForPatient(patient.id, "visitSelectDiagnosis");
+        loadVisitsForPatient(patient.id, "invoiceVisitSelect");
     }
 });
 
@@ -361,7 +365,11 @@ setupAutocomplete("searchPatientForRx", `${API_BASE}/patients/search`, {
         document.getElementById("invoicePatientDisplay").classList.remove("d-none");
         document.getElementById("invoicePatientSearch").classList.add("d-none");
         
+        // Load visits for all tabs
         loadVisitsForPatient(patient.id, "visitSelectForRx");
+        loadVisitsForPatient(patient.id, "visitSelectTechnique");
+        loadVisitsForPatient(patient.id, "visitSelectDiagnosis");
+        loadVisitsForPatient(patient.id, "invoiceVisitSelect");
     }
 });
 
@@ -582,6 +590,8 @@ async function renderPatients(searchQuery = "") {
                 <td>${p.name}</td>
                 <td>${p.dob}</td>
                 <td>${p.gender}</td>
+                <td>${p.cccd || ""}</td>
+                <td>${p.bhyt || ""}</td>
                 <td>${p.address || ""}</td>
                 <td>${p.phone || ""}</td>
                 <td>
@@ -846,6 +856,8 @@ document.getElementById("techniqueForm")?.addEventListener("submit", async (e) =
         return;
     }
 
+    console.log('Selected techniques:', selectedTechs);
+
     // If no techniques selected, skip to Prescription tab
     if (selectedTechs.length === 0) {
         const rxTab = new bootstrap.Tab(document.getElementById("prescription-tab"));
@@ -854,18 +866,58 @@ document.getElementById("techniqueForm")?.addEventListener("submit", async (e) =
     }
 
     let visitId = currentWorkflowVisit || document.getElementById("visitSelectTechnique").value;
+    console.log('Visit ID for technique:', visitId);
+    
+    // Nếu chưa có visitId, tạo phiếu khám tự động
     if (!visitId) {
-        showToast("Vui lòng chọn lần khám hoặc tạo phiếu khám trước", 'warning');
-        return;
+        const confirmCreate = confirm("Chưa có lần khám. Bạn có muốn tạo phiếu khám mới cho bệnh nhân này không?");
+        if (!confirmCreate) return;
+        
+        try {
+            const user = JSON.parse(localStorage.getItem("currentUser") || "{}");
+            const res = await fetch(`${API_BASE}/diagnosis`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    patientId: patientId,
+                    doctor: user.HoTen || "Bác sĩ",
+                    mainDiagnosis: "Khám kỹ thuật",
+                    subDiagnosis: "",
+                    symptoms: ""
+                })
+            });
+            const data = await res.json();
+            if (data.success && data.visitId) {
+                visitId = data.visitId;
+                currentWorkflowVisit = visitId;
+                showToast("Đã tạo phiếu khám mới", 'success');
+                // Reload visits cho tất cả tabs
+                await loadVisitsForPatient(patientId, "visitSelectTechnique");
+                await loadVisitsForPatient(patientId, "visitSelectForRx");
+                await loadVisitsForPatient(patientId, "visitSelectDiagnosis");
+                await loadVisitsForPatient(patientId, "invoiceVisitSelect");
+                document.getElementById("visitSelectTechnique").value = visitId;
+            } else {
+                showToast("Lỗi tạo phiếu khám", 'error');
+                return;
+            }
+        } catch (err) {
+            console.error(err);
+            showToast("Lỗi tạo phiếu khám", 'error');
+            return;
+        }
     }
 
     try {
+        console.log('Saving techniques:', { visitId, techniques: selectedTechs });
         const res = await fetch(`${API_BASE}/technique`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ visitId, techniques: selectedTechs })
         });
         const data = await res.json();
+        console.log('Save technique response:', data);
+        
         if (data.success) {
             showToast("Lưu chỉ định kỹ thuật thành công", 'success');
             
@@ -909,9 +961,45 @@ document.getElementById("prescriptionForm")?.addEventListener("submit", async (e
     }
 
     let visitId = currentWorkflowVisit || document.getElementById("visitSelectForRx").value;
+    
+    // Nếu chưa có visitId, tạo phiếu khám tự động
     if (!visitId) {
-        showToast("Vui lòng chọn lần khám hoặc tạo phiếu khám trước", 'warning');
-        return;
+        const confirmCreate = confirm("Chưa có lần khám. Bạn có muốn tạo phiếu khám mới cho bệnh nhân này không?");
+        if (!confirmCreate) return;
+        
+        try {
+            const user = JSON.parse(localStorage.getItem("currentUser") || "{}");
+            const res = await fetch(`${API_BASE}/diagnosis`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    patientId: patientId,
+                    doctor: user.HoTen || "Bác sĩ",
+                    mainDiagnosis: "Kê đơn thuốc",
+                    subDiagnosis: "",
+                    symptoms: ""
+                })
+            });
+            const data = await res.json();
+            if (data.success && data.visitId) {
+                visitId = data.visitId;
+                currentWorkflowVisit = visitId;
+                showToast("Đã tạo phiếu khám mới", 'success');
+                // Reload visits cho tất cả tabs
+                await loadVisitsForPatient(patientId, "visitSelectForRx");
+                await loadVisitsForPatient(patientId, "visitSelectTechnique");
+                await loadVisitsForPatient(patientId, "visitSelectDiagnosis");
+                await loadVisitsForPatient(patientId, "invoiceVisitSelect");
+                document.getElementById("visitSelectForRx").value = visitId;
+            } else {
+                showToast("Lỗi tạo phiếu khám", 'error');
+                return;
+            }
+        } catch (err) {
+            console.error(err);
+            showToast("Lỗi tạo phiếu khám", 'error');
+            return;
+        }
     }
 
     try {
@@ -1065,13 +1153,17 @@ function setupEnterToNextField() {
 // ===============================
 async function loadInvoice(visitId) {
   try {
+    console.log('Loading invoice for visitId:', visitId);
+    
     // 1. Lấy danh sách thuốc của lần khám
     const resThuoc = await fetch(`${API_BASE}/visit/${visitId}/prescription`);
     const medicines = await resThuoc.json();
+    console.log('Medicines:', medicines);
 
     // 2. Lấy danh sách kỹ thuật của lần khám
     const resTech = await fetch(`${API_BASE}/visit/${visitId}/techniques`);
     const techniques = await resTech.json();
+    console.log('Techniques:', techniques);
 
     // 3. Render danh sách thuốc
     const tbodyThuoc = document.getElementById("invoiceMedicinesTableBody");
@@ -1097,26 +1189,20 @@ async function loadInvoice(visitId) {
     // 4. Render danh sách kỹ thuật
     const tbodyTech = document.getElementById("invoiceTechniquesTableBody");
     if (techniques.length === 0) {
-      tbodyTech.innerHTML = "<tr><td colspan='2' class='text-center text-muted'>Không có kỹ thuật nào</td></tr>";
+      tbodyTech.innerHTML = "<tr><td class='text-center text-muted'>Không có kỹ thuật nào</td></tr>";
     } else {
-      let totalTech = 0;
       tbodyTech.innerHTML = techniques.map(t => {
-        totalTech += t.price || 0;
         return `
           <tr>
             <td>${t.name}</td>
-            <td>${formatCurrency(t.price || 0)}</td>
           </tr>
         `;
       }).join("");
-      document.getElementById("totalTechniques").textContent = formatCurrency(totalTech);
     }
 
-    // 5. Tính tổng tiền
+    // 5. Tính tổng tiền (chỉ từ thuốc)
     const totalMedicines = medicines.reduce((sum, m) => sum + m.quantity * m.price, 0);
-    const totalTech = techniques.reduce((sum, t) => sum + (t.price || 0), 0);
-    const grandTotal = totalMedicines + totalTech;
-    document.getElementById("grandTotal").textContent = formatCurrency(grandTotal);
+    document.getElementById("grandTotal").textContent = formatCurrency(totalMedicines);
 
   } catch (err) {
     console.error("Lỗi tải hóa đơn:", err);
@@ -1186,6 +1272,26 @@ window.addEventListener("load", () => {
                     btn.focus();
                 }
             }
+        });
+    }
+    
+    // Invoice tab event handlers
+    const loadInvoiceBtn = document.getElementById("loadInvoiceBtn");
+    if (loadInvoiceBtn) {
+        loadInvoiceBtn.addEventListener("click", () => {
+            const visitId = document.getElementById("invoiceVisitSelect")?.value;
+            if (visitId) {
+                loadInvoice(visitId);
+            } else {
+                showToast("Vui lòng chọn lần khám", 'error');
+            }
+        });
+    }
+    
+    const previewInvoiceBtn = document.getElementById("previewInvoiceBtn");
+    if (previewInvoiceBtn) {
+        previewInvoiceBtn.addEventListener("click", () => {
+            showToast("Tính năng xem trước đang được phát triển", 'info');
         });
     }
 });

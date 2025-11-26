@@ -360,8 +360,7 @@ app.get('/api/visit/:visitId/techniques', async (req, res) => {
         const result = await pool.request()
             .input('visitId', visitId)
             .query(`SELECT 
-                      k.TenKyThuat AS name,
-                      k.DonGia AS price
+                      k.TenKyThuat AS name
                     FROM ChiDinhKyThuat ct
                     JOIN DanhMucKyThuat k ON ct.MaKyThuat = k.MaKyThuat
                     WHERE ct.MaPhieu = @visitId`);
