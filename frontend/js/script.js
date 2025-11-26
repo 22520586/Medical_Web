@@ -624,10 +624,30 @@ async function loadVisitsForPatient(patientId, selectElementId) {
     }
 }
 
-document.getElementById("visitSelectDiagnosis")?.addEventListener("change", (e) => {
+document.getElementById("visitSelectDiagnosis")?.addEventListener("change", async (e) => {
     const visitId = e.target.value;
     if (visitId) {
         currentWorkflowVisit = visitId;
+        
+        // Load chi tiết phiếu khám vào form
+        try {
+            const res = await fetch(`${API_BASE}/visit/${visitId}`);
+            const data = await res.json();
+            
+            // Fill form fields
+            document.getElementById("doctor").value = data.doctor || "";
+            document.getElementById("mainDiagnosis").value = data.mainDiagnosis || "";
+            document.getElementById("subDiagnosis").value = data.subDiagnosis || "";
+            document.getElementById("symptoms").value = data.symptoms || "";
+            document.getElementById("notes").value = data.notes || "";
+            document.getElementById("temperature").value = data.temperature || "";
+            document.getElementById("bloodPressure").value = data.bloodPressure || "";
+            document.getElementById("height").value = data.height || "";
+            document.getElementById("weight").value = data.weight || "";
+        } catch (err) {
+            console.error("Lỗi load chi tiết phiếu khám:", err);
+        }
+        
         // Sync to other tabs
         const techSelect = document.getElementById("visitSelectTechnique");
         const rxSelect = document.getElementById("visitSelectForRx");

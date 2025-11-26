@@ -371,6 +371,52 @@ app.get('/api/visit/:visitId/techniques', async (req, res) => {
     }
 });
 
+// === Lấy chi tiết phiếu khám ===
+app.get('/api/visit/:visitId', async (req, res) => {
+    const { visitId } = req.params;
+    try {
+        const visitResult = await pool.request()
+            .input('visitId', visitId)
+            .query(`SELECT 
+                      MaPhieu, MaBenhNhan, NgayKham, BacSiKham,
+                      ChanDoanChinh, ChanDoanPhu, ChanDoanSoBo, GhiChu
+                    FROM PhieuKham 
+                    WHERE MaPhieu = @visitId`);
+        
+        if (visitResult.recordset.length === 0) {
+            return res.status(404).json({ error: 'Không tìm thấy phiếu khám' });
+        }
+        
+        const visit = visitResult.recordset[0];
+        
+        // Lấy sinh hiệu nếu có
+        const vitalResult = await pool.request()
+            .input('visitId', visitId)
+            .query(`SELECT NhietDo, HuyetAp, ChieuCao, CanNang 
+                    FROM SinhHieu WHERE MaPhieu = @visitId`);
+        
+        const vitals = vitalResult.recordset[0] || {};
+        
+        res.json({
+            visitId: visit.MaPhieu,
+            patientId: visit.MaBenhNhan,
+            date: visit.NgayKham,
+            doctor: visit.BacSiKham,
+            mainDiagnosis: visit.ChanDoanChinh,
+            subDiagnosis: visit.ChanDoanPhu,
+            symptoms: visit.ChanDoanSoBo,
+            notes: visit.GhiChu,
+            temperature: vitals.NhietDo,
+            bloodPressure: vitals.HuyetAp,
+            height: vitals.ChieuCao,
+            weight: vitals.CanNang
+        });
+    } catch (err) {
+        console.error('Lỗi lấy chi tiết phiếu khám:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // =======================
 // API: LƯU ĐƠN THUỐC
 // =======================
